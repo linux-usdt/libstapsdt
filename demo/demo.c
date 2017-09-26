@@ -12,6 +12,9 @@ int main( int argc, char *argv[] ) {
 
   fireProbe = registerProbe(argv[1], argv[2]);
 
+  if(fireProbe == NULL)
+    return -1;
+
   while(1) {
     printf("Firing probe...\n");
     fireProbe();

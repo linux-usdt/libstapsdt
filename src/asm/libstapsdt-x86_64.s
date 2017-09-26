@@ -1,11 +1,11 @@
 .text
 
 .align 4, 0x90
-.globl lorem
-.globl lorem_end
+.globl _funcStart
+.globl _funcEnd
 
-lorem:
+_funcStart:
   nop
   ret
-lorem_end:
+_funcEnd:
   nop
