@@ -11,11 +11,13 @@
 #include "util.h"
 #include "sdtnote.h"
 #include "string-table.h"
+#include "dynamic-symbols.h"
 
 #define PHDR_ALIGN 0x200000
+#define PROBE_SYMBOL "lorem"
 
-int lorem();
-void lorem_end();
+void _funcStart();
+void _funcEnd();
 
 // ------------------------------------------------------------------------- //
 // TODO dynamic hashes creation
@@ -41,56 +43,41 @@ uint32_t eh_frame[] = {0x0, 0x0};
 // Static strings
 StringTableNode *shstrtabStr, *hashStr, *dynsymStr, *dynstrStr, *textStr, *ehStr, *dynamicStr, *stapsdtStr, *noteStapsdtStr;
 
-// Dynamic strings
-StringTableNode *loremStr, *edataStr, *bssStr, *endStr;
-
 // ------------------------------------------------------------------------- //
 // TODO dynamic strings creation
-void *createDynSymData() {
-  Elf64_Sym *dynsyms = malloc(sizeof(Elf64_Sym) * 6);
+void *createDynSymData(DynamicSymbolTable *table) {
+  size_t symbolsCount = (5 + table->count);
+  int i;
+  DynamicSymbolList *current;
+  Elf64_Sym *dynsyms = malloc(sizeof(Elf64_Sym) * (5 + table->count));
 
-  // Empty
-  dynsyms[0].st_name  = 0;
-  dynsyms[0].st_info  = 0;
-  dynsyms[0].st_other = 0;
-  dynsyms[0].st_shndx = 0;
-  dynsyms[0].st_value = 0;
-  dynsyms[0].st_size  = 0;
+  for(i=0; i < symbolsCount; i++) {
+    dynsyms[i].st_name  = 0;
+    dynsyms[i].st_info  = 0;
+    dynsyms[i].st_other = 0;
+    dynsyms[i].st_shndx = 0;
+    dynsyms[i].st_value = 0;
+    dynsyms[i].st_size  = 0;
+  }
 
-  dynsyms[1].st_name  = 0;
   dynsyms[1].st_info  = ELF64_ST_INFO(STB_LOCAL, STT_SECTION);
-  dynsyms[1].st_other = 0;
-  dynsyms[1].st_shndx = 0; // elf_ndxscn(textScn);
-  dynsyms[1].st_value = 0; // Text section addr
-  dynsyms[1].st_size  = 0;
 
-  dynsyms[2].st_name  = loremStr->index;  // FIXME
-  dynsyms[2].st_info  = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
-  dynsyms[2].st_other = 0;
-  dynsyms[2].st_shndx = 0; // elf_ndxscn(textScn);
-  dynsyms[2].st_value = 0; // Function addr (same as text for now)
-  dynsyms[2].st_size  = 0;
+  current = table->symbols;
+  for(i=0; i < table->count; i++) {
+    dynsyms[i + 2].st_name  = current->symbol.string->index;
+    dynsyms[i + 2].st_info  = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
+  }
+  i -= 1;
 
-  dynsyms[3].st_name  = bssStr->index;  // FIXME
-  dynsyms[3].st_info  = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
-  dynsyms[3].st_other = 0;
-  dynsyms[3].st_shndx = 0; // elf_ndxscn(dynScn);
-  dynsyms[3].st_value = PHDR_ALIGN + 0x0; // 0x0 should be first address after dynamic section
-  dynsyms[3].st_size  = 0;
 
-  dynsyms[4].st_name  = edataStr->index;
-  dynsyms[4].st_info  = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
-  dynsyms[4].st_other = 0;
-  dynsyms[4].st_shndx = 0; // elf_ndxscn(dynScn);
-  dynsyms[4].st_value = PHDR_ALIGN + 0x0; // 0x0 should be first address after dynamic section
-  dynsyms[4].st_size  = 0;
+  dynsyms[i + 3].st_name  = table->bssStart.string->index;
+  dynsyms[i + 3].st_info  = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
 
-  dynsyms[5].st_name  = endStr->index;
-  dynsyms[5].st_info  = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
-  dynsyms[5].st_other = 0;
-  dynsyms[5].st_shndx = 0; // elf_ndxscn(dynScn);
-  dynsyms[5].st_value = PHDR_ALIGN + 0x0; // 0x0 should be first address after dynamic section
-  dynsyms[5].st_size  = 0;
+  dynsyms[i + 4].st_name  = table->eData.string->index;
+  dynsyms[i + 4].st_info  = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
+
+  dynsyms[i + 5].st_name  = table->end.string->index;
+  dynsyms[i + 5].st_info  = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
 
   return dynsyms;
 }
@@ -99,60 +86,14 @@ void *createDynSymData() {
 void *createDynamicData() {
   Elf64_Dyn *dyns = malloc(sizeof(Elf64_Dyn) * 11);
 
-  // HASH
+  for(int i=0; i < 11; i++) {
+    dyns[i].d_tag = DT_NULL;
+  }
 
   dyns[0].d_tag = DT_HASH;
-  dyns[0].d_un.d_ptr  = 0;
-
-  //
-
   dyns[1].d_tag = DT_STRTAB;
-  dyns[1].d_un.d_ptr  = 0;
-
-  //
-
   dyns[2].d_tag = DT_SYMTAB;
-  dyns[2].d_un.d_ptr = 0;
-
-  //
-
   dyns[3].d_tag = DT_STRSZ;
-  dyns[3].d_un.d_val  = 0;
-
-  //
-
-  dyns[4].d_tag = DT_SYMENT;
-  dyns[4].d_un.d_val  = 0;
-
-  //
-
-  dyns[5].d_tag = DT_NULL;
-  dyns[5].d_un.d_val  = 0;
-
-  //
-
-  dyns[6].d_tag = DT_NULL;
-  dyns[6].d_un.d_val  = 0;
-
-  //
-
-  dyns[7].d_tag = DT_NULL;
-  dyns[7].d_un.d_val  = 0;
-
-  //
-
-  dyns[8].d_tag = DT_NULL;
-  dyns[8].d_un.d_val  = 0;
-
-  //
-
-  dyns[9].d_tag = DT_NULL;
-  dyns[9].d_un.d_val  = 0;
-
-  //
-
-  dyns[10].d_tag = DT_NULL;
-  dyns[10].d_un.d_val  = 0;
 
   return dyns;
 }
@@ -180,6 +121,17 @@ int createSharedLibrary(int fd, char* provider, char *probe) {
           *dynamicScn,
           *sdtNoteScn,
           *shStrTabScn;
+  Elf64_Addr
+      dynamicSize = 0,
+      hashOffset,
+      dynSymOffset,
+      dynStrOffset,
+      textOffset,
+      sdtBaseOffset,
+      ehFrameOffset,
+      dynamicOffset,
+      sdtNoteOffset,
+      shStrTabOffset;
   Elf_Data *data;
   Elf64_Ehdr *ehdr;
   Elf64_Phdr *phdrLoad1,
@@ -202,28 +154,12 @@ int createSharedLibrary(int fd, char* provider, char *probe) {
 
   // Dynamic strings
   StringTable *dynamicString = stringTableInit();
-  edataStr = stringTableAdd(dynamicString, "_edata");
-  bssStr = stringTableAdd(dynamicString, "__bss_start");
-  endStr = stringTableAdd(dynamicString, "_end");
-  loremStr = stringTableAdd(dynamicString, "lorem");
+  DynamicSymbolTable *dynamicSymbols = dynamicSymbolTableInit(dynamicString);
+  dynamicSymbolTableAdd(dynamicSymbols, PROBE_SYMBOL);
 
-  Elf64_Sym *dynSymData = createDynSymData();
+  Elf64_Sym *dynSymData = createDynSymData(dynamicSymbols);
   Elf64_Dyn *dynamicData = createDynamicData();
 
-  Elf64_Addr
-      dynamicSize = 0,
-      hashOffset,
-      dynSymOffset,
-      dynStrOffset,
-      textOffset,
-      sdtBaseOffset,
-      ehFrameOffset,
-      dynamicOffset,
-      sdtNoteOffset,
-      shStrTabOffset;
-
-
-  // SDTNote *sdtNote = sdtNoteInit("mainer", "lorem");
   SDTNote *sdtNote = sdtNoteInit(provider, probe);
   void *sdtNoteData = malloc(sdtNoteSize(sdtNote));
 
@@ -237,16 +173,7 @@ int createSharedLibrary(int fd, char* provider, char *probe) {
   ehdr->e_type           = ET_DYN;
   ehdr->e_machine        = EM_X86_64;
   ehdr->e_version        = EV_CURRENT;
-  // ehdr->e_entry          = 0x0;       // FIXME: entry should be text
-  // ehdr->phoff            = -1;
-  // ehdr->shoff            = -1;
   ehdr->e_flags          = 0;
-  // ehdr->e_ehsize      = -1;
-  // ehdr->e_phentsize      = -1;
-  // ehdr->e_phnum      = 3;
-  // ehdr->e_shentsize      = -1;
-  // ehdr->e_shnum      = -1;
-  // ehdr->e_shstrndx      = -1;
 
   // ----------------------------------------------------------------------- //
 
@@ -353,9 +280,9 @@ int createSharedLibrary(int fd, char* provider, char *probe) {
 
   data->d_align = 16;
   data->d_off = 0LL;
-  data->d_buf = (void *)lorem;
+  data->d_buf = (void *)_funcStart;
   data->d_type = ELF_T_BYTE;
-  data->d_size = (unsigned long)lorem_end - (unsigned long)lorem;
+  data->d_size = (unsigned long)_funcEnd - (unsigned long)_funcStart;
   data->d_version = EV_CURRENT;
 
 
@@ -675,12 +602,13 @@ void *registerProbe(char *provider, char *probe) {
       return NULL;
   }
 
-  fireProbe = dlsym(handle, "lorem");
+  fireProbe = dlsym(handle, PROBE_SYMBOL);
 
   if ((error = dlerror()) != NULL)  {
       fputs(error, stderr);
       return NULL;
   }
+  printf("Eta\n");
 
   (void) close(fd);
   return fireProbe;

@@ -24,7 +24,11 @@ build/string-table.o: src/string-table.c
 	mkdir -p build
 	$(CC) $(CFLAGS) -c $^ -o $@
 
-out/libstapsdt.a: build/libstapsdt-x86_64.o build/libstapsdt.o build/util.o build/sdtnote.o build/string-table.o
+build/dynamic-symbols.o: src/dynamic-symbols.c
+	mkdir -p build
+	$(CC) $(CFLAGS) -c $^ -o $@
+
+out/libstapsdt.a: build/libstapsdt-x86_64.o build/libstapsdt.o build/util.o build/sdtnote.o build/string-table.o build/dynamic-symbols.o
 	mkdir -p out
 	ar rcs $@ $^
 
