@@ -12,6 +12,7 @@
 #include "sdtnote.h"
 #include "string-table.h"
 #include "dynamic-symbols.h"
+#include "section.h"
 
 #define PHDR_ALIGN 0x200000
 #define PROBE_SYMBOL "lorem"
@@ -41,7 +42,7 @@ uint32_t eh_frame[] = {0x0, 0x0};
 // TODO dynamic strings creation
 
 // Static strings
-StringTableNode *shstrtabStr, *hashStr, *dynsymStr, *dynstrStr, *textStr, *ehStr, *dynamicStr, *stapsdtStr, *noteStapsdtStr;
+// StringTableNode *shstrtabStr, *hashStr, *dynsymStr, *dynstrStr, *textStr, *ehStr, *dynamicStr, *stapsdtStr, *noteStapsdtStr;
 
 // ------------------------------------------------------------------------- //
 // TODO dynamic strings creation
@@ -112,45 +113,33 @@ Elf *create_elf(int fd) {
 
 int createSharedLibrary(int fd, char* provider, char *probe) {
   Elf *e;
-  Elf_Scn *hashScn,
-          *dynSymScn,
-          *dynStrScn,
-          *textScn,
-          *sdtBaseScn,
-          *ehFrameScn,
-          *dynamicScn,
-          *sdtNoteScn,
-          *shStrTabScn;
-  Elf64_Addr
-      dynamicSize = 0,
-      hashOffset,
-      dynSymOffset,
-      dynStrOffset,
-      textOffset,
-      sdtBaseOffset,
-      ehFrameOffset,
-      dynamicOffset,
-      sdtNoteOffset,
-      shStrTabOffset;
-  Elf_Data *data;
+  Section hashSection,
+          dynSymSection,
+          dynStrSection,
+          textSection,
+          sdtBaseSection,
+          ehFrameSection,
+          dynamicSection,
+          sdtNoteSection,
+          shStrTabSection;
+
   Elf64_Ehdr *ehdr;
   Elf64_Phdr *phdrLoad1,
              *phdrLoad2,
              *phdrDyn,
              *phdrSdtNote;
-  Elf64_Shdr *shdr;
 
   // Static strings
   StringTable *shStringTable = stringTableInit();
-  shstrtabStr = stringTableAdd(shStringTable, ".shstrtab");
-  hashStr = stringTableAdd(shStringTable, ".hash");
-  dynsymStr = stringTableAdd(shStringTable, ".dynsym");
-  dynstrStr = stringTableAdd(shStringTable, ".dynstr");
-  textStr = stringTableAdd(shStringTable, ".text");
-  ehStr = stringTableAdd(shStringTable, ".eh_frame");
-  dynamicStr = stringTableAdd(shStringTable, ".dynamic");
-  stapsdtStr = stringTableAdd(shStringTable, ".stapsdt.base");
-  noteStapsdtStr = stringTableAdd(shStringTable, ".note.stapsdt");
+  shStrTabSection.string = stringTableAdd(shStringTable, ".shstrtab");
+  hashSection.string = stringTableAdd(shStringTable, ".hash");
+  dynSymSection.string = stringTableAdd(shStringTable, ".dynsym");
+  dynStrSection.string = stringTableAdd(shStringTable, ".dynstr");
+  textSection.string = stringTableAdd(shStringTable, ".text");
+  ehFrameSection.string = stringTableAdd(shStringTable, ".eh_frame");
+  dynamicSection.string = stringTableAdd(shStringTable, ".dynamic");
+  sdtBaseSection.string = stringTableAdd(shStringTable, ".stapsdt.base");
+  sdtNoteSection.string = stringTableAdd(shStringTable, ".note.stapsdt");
 
   // Dynamic strings
   StringTable *dynamicString = stringTableInit();
@@ -189,231 +178,224 @@ int createSharedLibrary(int fd, char* provider, char *probe) {
   // ----------------------------------------------------------------------- //
   // Section: HASH
 
-  if((hashScn = elf_newscn(e)) == NULL)
+  if((hashSection.scn = elf_newscn(e)) == NULL)
     errx(EXIT_FAILURE, "elf_newscn failed: %s", elf_errmsg(-1));
 
-  if((data = elf_newdata(hashScn)) == NULL)
+  if((hashSection.data = elf_newdata(hashSection.scn)) == NULL)
     errx(EXIT_FAILURE, "elf_newdata failed: %s", elf_errmsg(-1));
 
-  data->d_align = 8;
-  data->d_off = 0LL;
-  data->d_buf = hash_words;
-  data->d_type = ELF_T_XWORD;
-  data->d_size = sizeof(hash_words);
-  data->d_version = EV_CURRENT;
+  hashSection.data->d_align = 8;
+  hashSection.data->d_off = 0LL;
+  hashSection.data->d_buf = hash_words;
+  hashSection.data->d_type = ELF_T_XWORD;
+  hashSection.data->d_size = sizeof(hash_words);
+  hashSection.data->d_version = EV_CURRENT;
 
-  if((shdr = elf64_getshdr(hashScn)) == NULL)
+  if((hashSection.shdr = elf64_getshdr(hashSection.scn)) == NULL)
     errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
 
-  shdr->sh_name = hashStr->index;
-  shdr->sh_type = SHT_HASH;
-  shdr->sh_flags = SHF_ALLOC;
+  hashSection.shdr->sh_name = hashSection.string->index;
+  hashSection.shdr->sh_type = SHT_HASH;
+  hashSection.shdr->sh_flags = SHF_ALLOC;
 
   // ----------------------------------------------------------------------- //
   // Section: Dynsym
 
-  if((dynSymScn = elf_newscn(e)) == NULL)
+  if((dynSymSection.scn = elf_newscn(e)) == NULL)
     errx(EXIT_FAILURE, "elf_newscn failed: %s", elf_errmsg(-1));
 
-  if((data = elf_newdata(dynSymScn)) == NULL)
+  if((dynSymSection.data = elf_newdata(dynSymSection.scn)) == NULL)
     errx(EXIT_FAILURE, "elf_newdata failed: %s", elf_errmsg(-1));
 
-  data->d_align = 8;
-  data->d_off = 0LL;
-  data->d_buf = dynSymData;
-  data->d_type = ELF_T_XWORD;
-  data->d_size = sizeof(Elf64_Sym) * 6;
-  data->d_version = EV_CURRENT;
+  dynSymSection.data->d_align = 8;
+  dynSymSection.data->d_off = 0LL;
+  dynSymSection.data->d_buf = dynSymData;
+  dynSymSection.data->d_type = ELF_T_XWORD;
+  dynSymSection.data->d_size = sizeof(Elf64_Sym) * 6;
+  dynSymSection.data->d_version = EV_CURRENT;
 
-  if((shdr = elf64_getshdr(dynSymScn)) == NULL)
+  if((dynSymSection.shdr = elf64_getshdr(dynSymSection.scn)) == NULL)
     errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
 
-  shdr->sh_name = dynsymStr->index;
-  shdr->sh_type = SHT_DYNSYM;
-  shdr->sh_flags = SHF_ALLOC;
-  shdr->sh_info = 2; // First non local symbol
+  dynSymSection.shdr->sh_name = dynSymSection.string->index;
+  dynSymSection.shdr->sh_type = SHT_DYNSYM;
+  dynSymSection.shdr->sh_flags = SHF_ALLOC;
+  dynSymSection.shdr->sh_info = 2; // First non local symbol
 
-
-  if((shdr = elf64_getshdr(hashScn)) == NULL)
-    errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
-
-  shdr->sh_link = elf_ndxscn(dynSymScn);
+  hashSection.shdr->sh_link = elf_ndxscn(dynSymSection.scn);
 
   // ----------------------------------------------------------------------- //
   // Section: DYNSTR
 
-  if((dynStrScn = elf_newscn(e)) == NULL)
+  if((dynStrSection.scn = elf_newscn(e)) == NULL)
     errx(EXIT_FAILURE, "elf_newscn failed: %s", elf_errmsg(-1));
 
-  if((data = elf_newdata(dynStrScn)) == NULL)
+  if((dynStrSection.data = elf_newdata(dynStrSection.scn)) == NULL)
     errx(EXIT_FAILURE, "elf_newdata failed: %s", elf_errmsg(-1));
 
-  data->d_align = 1;
-  data->d_off = 0LL;
-  data->d_buf = stringTableToBuffer(dynamicString);
+  dynStrSection.data->d_align = 1;
+  dynStrSection.data->d_off = 0LL;
+  dynStrSection.data->d_buf = stringTableToBuffer(dynamicString);
 
-  data->d_type = ELF_T_BYTE;
-  data->d_size = dynamicString->size;
-  data->d_version = EV_CURRENT;
+  dynStrSection.data->d_type = ELF_T_BYTE;
+  dynStrSection.data->d_size = dynamicString->size;
+  dynStrSection.data->d_version = EV_CURRENT;
 
-  if((shdr = elf64_getshdr(dynStrScn)) == NULL)
+  if((dynStrSection.shdr = elf64_getshdr(dynStrSection.scn)) == NULL)
     errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
 
-  shdr->sh_name = dynstrStr->index;
-  shdr->sh_type = SHT_STRTAB;
-  shdr->sh_flags = SHF_ALLOC;
+  dynStrSection.shdr->sh_name = dynStrSection.string->index;
+  dynStrSection.shdr->sh_type = SHT_STRTAB;
+  dynStrSection.shdr->sh_flags = SHF_ALLOC;
 
-  if((shdr = elf64_getshdr(dynSymScn)) == NULL)
-    errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
-
-  shdr->sh_link = elf_ndxscn(dynStrScn);
+  dynSymSection.shdr->sh_link = elf_ndxscn(dynStrSection.scn);
 
 
   // ----------------------------------------------------------------------- //
   // Section: TEXT
 
-  if((textScn = elf_newscn(e)) == NULL)
+  if((textSection.scn = elf_newscn(e)) == NULL)
     errx(EXIT_FAILURE, "elf_newscn failed: %s", elf_errmsg(-1));
 
-  if((data = elf_newdata(textScn)) == NULL)
+  if((textSection.data = elf_newdata(textSection.scn)) == NULL)
     errx(EXIT_FAILURE, "elf_newdata failed: %s", elf_errmsg(-1));
 
-  data->d_align = 16;
-  data->d_off = 0LL;
-  data->d_buf = (void *)_funcStart;
-  data->d_type = ELF_T_BYTE;
-  data->d_size = (unsigned long)_funcEnd - (unsigned long)_funcStart;
-  data->d_version = EV_CURRENT;
+  textSection.data->d_align = 16;
+  textSection.data->d_off = 0LL;
+  textSection.data->d_buf = (void *)_funcStart;
+  textSection.data->d_type = ELF_T_BYTE;
+  textSection.data->d_size = (unsigned long)_funcEnd - (unsigned long)_funcStart;
+  textSection.data->d_version = EV_CURRENT;
 
 
-  if((shdr = elf64_getshdr(textScn)) == NULL)
+  if((textSection.shdr = elf64_getshdr(textSection.scn)) == NULL)
     errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
 
-  shdr->sh_name = textStr->index;
-  shdr->sh_type = SHT_PROGBITS;
-  shdr->sh_flags = SHF_ALLOC | SHF_EXECINSTR;
+  textSection.shdr->sh_name = textSection.string->index;
+  textSection.shdr->sh_type = SHT_PROGBITS;
+  textSection.shdr->sh_flags = SHF_ALLOC | SHF_EXECINSTR;
 
   // ----------------------------------------------------------------------- //
   // Section: SDT BASE
 
-  if((sdtBaseScn = elf_newscn(e)) == NULL)
+  if((sdtBaseSection.scn = elf_newscn(e)) == NULL)
     errx(EXIT_FAILURE, "elf_newscn failed: %s", elf_errmsg(-1));
 
-  if((data = elf_newdata(sdtBaseScn)) == NULL)
+  if((sdtBaseSection.data = elf_newdata(sdtBaseSection.scn)) == NULL)
     errx(EXIT_FAILURE, "elf_newdata failed: %s", elf_errmsg(-1));
 
-  data->d_align = 1;
-  data->d_off = 0LL;
-  data->d_buf = eh_frame;
-  data->d_type = ELF_T_BYTE;
-  data->d_size = 1;
-  data->d_version = EV_CURRENT;
+  sdtBaseSection.data->d_align = 1;
+  sdtBaseSection.data->d_off = 0LL;
+  sdtBaseSection.data->d_buf = eh_frame;
+  sdtBaseSection.data->d_type = ELF_T_BYTE;
+  sdtBaseSection.data->d_size = 1;
+  sdtBaseSection.data->d_version = EV_CURRENT;
 
 
-  if((shdr = elf64_getshdr(sdtBaseScn)) == NULL)
+  if((sdtBaseSection.shdr = elf64_getshdr(sdtBaseSection.scn)) == NULL)
     errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
 
-  shdr->sh_name = stapsdtStr->index;
-  shdr->sh_type = SHT_PROGBITS;
-  shdr->sh_flags = SHF_ALLOC;
+  sdtBaseSection.shdr->sh_name = sdtBaseSection.string->index;
+  sdtBaseSection.shdr->sh_type = SHT_PROGBITS;
+  sdtBaseSection.shdr->sh_flags = SHF_ALLOC;
 
   // ----------------------------------------------------------------------- //
   // Section: EH_FRAME
 
-  if((ehFrameScn = elf_newscn(e)) == NULL)
+  if((ehFrameSection.scn = elf_newscn(e)) == NULL)
     errx(EXIT_FAILURE, "elf_newscn failed: %s", elf_errmsg(-1));
 
-  if((data = elf_newdata(ehFrameScn)) == NULL)
+  if((ehFrameSection.data = elf_newdata(ehFrameSection.scn)) == NULL)
     errx(EXIT_FAILURE, "elf_newdata failed: %s", elf_errmsg(-1));
 
-  data->d_align = 8;
-  data->d_off = 0LL;
-  data->d_buf = eh_frame;
-  data->d_type = ELF_T_BYTE;
-  data->d_size = 0;
-  data->d_version = EV_CURRENT;
+  ehFrameSection.data->d_align = 8;
+  ehFrameSection.data->d_off = 0LL;
+  ehFrameSection.data->d_buf = eh_frame;
+  ehFrameSection.data->d_type = ELF_T_BYTE;
+  ehFrameSection.data->d_size = 0;
+  ehFrameSection.data->d_version = EV_CURRENT;
 
 
-  if((shdr = elf64_getshdr(ehFrameScn)) == NULL)
+  if((ehFrameSection.shdr = elf64_getshdr(ehFrameSection.scn)) == NULL)
     errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
 
-  shdr->sh_name = ehStr->index;
-  shdr->sh_type = SHT_PROGBITS;
-  shdr->sh_flags = SHF_ALLOC;
+  ehFrameSection.shdr->sh_name = ehFrameSection.string->index;
+  ehFrameSection.shdr->sh_type = SHT_PROGBITS;
+  ehFrameSection.shdr->sh_flags = SHF_ALLOC;
 
   // ----------------------------------------------------------------------- //
   // Section: DYNAMIC
 
-  if((dynamicScn = elf_newscn(e)) == NULL)
+  if((dynamicSection.scn = elf_newscn(e)) == NULL)
     errx(EXIT_FAILURE, "elf_newscn failed: %s", elf_errmsg(-1));
 
-  if((data = elf_newdata(dynamicScn)) == NULL)
+  if((dynamicSection.data = elf_newdata(dynamicSection.scn)) == NULL)
     errx(EXIT_FAILURE, "elf_newdata failed: %s", elf_errmsg(-1));
 
-  data->d_align = 8;
-  data->d_off = 0LL;
-  data->d_buf = dynamicData;
-  data->d_type = ELF_T_BYTE;
-  data->d_size = 11 * sizeof(Elf64_Dyn);
-  data->d_version = EV_CURRENT;
+  dynamicSection.data->d_align = 8;
+  dynamicSection.data->d_off = 0LL;
+  dynamicSection.data->d_buf = dynamicData;
+  dynamicSection.data->d_type = ELF_T_BYTE;
+  dynamicSection.data->d_size = 11 * sizeof(Elf64_Dyn);
+  dynamicSection.data->d_version = EV_CURRENT;
 
 
-  if((shdr = elf64_getshdr(dynamicScn)) == NULL)
+  if((dynamicSection.shdr = elf64_getshdr(dynamicSection.scn)) == NULL)
     errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
 
-  shdr->sh_name = dynamicStr->index;
-  shdr->sh_type = SHT_DYNAMIC;
-  shdr->sh_flags = SHF_WRITE | SHF_ALLOC;
-  shdr->sh_link = elf_ndxscn(dynStrScn);
+  dynamicSection.shdr->sh_name = dynamicSection.string->index;
+  dynamicSection.shdr->sh_type = SHT_DYNAMIC;
+  dynamicSection.shdr->sh_flags = SHF_WRITE | SHF_ALLOC;
+  dynamicSection.shdr->sh_link = elf_ndxscn(dynStrSection.scn);
 
   // ----------------------------------------------------------------------- //
   // Section: SDT_NOTE
 
-  if((sdtNoteScn = elf_newscn(e)) == NULL)
+  if((sdtNoteSection.scn = elf_newscn(e)) == NULL)
     errx(EXIT_FAILURE, "elf_newscn failed: %s", elf_errmsg(-1));
 
-  if((data = elf_newdata(sdtNoteScn)) == NULL)
+  if((sdtNoteSection.data = elf_newdata(sdtNoteSection.scn)) == NULL)
     errx(EXIT_FAILURE, "elf_newdata failed: %s", elf_errmsg(-1));
 
-  data->d_align = 4;
-  data->d_off = 0LL;
-  data->d_buf = sdtNoteData;
-  data->d_type = ELF_T_NHDR;
-  data->d_size = sdtNoteSize(sdtNote);
-  data->d_version = EV_CURRENT;
+  sdtNoteSection.data->d_align = 4;
+  sdtNoteSection.data->d_off = 0LL;
+  sdtNoteSection.data->d_buf = sdtNoteData;
+  sdtNoteSection.data->d_type = ELF_T_NHDR;
+  sdtNoteSection.data->d_size = sdtNoteSize(sdtNote);
+  sdtNoteSection.data->d_version = EV_CURRENT;
 
 
-  if((shdr = elf64_getshdr(sdtNoteScn)) == NULL)
+  if((sdtNoteSection.shdr = elf64_getshdr(sdtNoteSection.scn)) == NULL)
     errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
 
-  shdr->sh_name = noteStapsdtStr->index;
-  shdr->sh_type = SHT_NOTE;
-  shdr->sh_flags = 0;
+  sdtNoteSection.shdr->sh_name = sdtNoteSection.string->index;
+  sdtNoteSection.shdr->sh_type = SHT_NOTE;
+  sdtNoteSection.shdr->sh_flags = 0;
 
   // ----------------------------------------------------------------------- //
   // Section: SHSTRTAB
 
-  if((shStrTabScn = elf_newscn(e)) == NULL)
+  if((shStrTabSection.scn = elf_newscn(e)) == NULL)
     errx(EXIT_FAILURE, "elf_newscn failed: %s", elf_errmsg(-1));
 
-  if((data = elf_newdata(shStrTabScn)) == NULL)
+  if((shStrTabSection.data = elf_newdata(shStrTabSection.scn)) == NULL)
     errx(EXIT_FAILURE, "elf_newdata failed: %s", elf_errmsg(-1));
 
-  data->d_align = 1;
-  data->d_off = 0LL;
-  data->d_buf = stringTableToBuffer(shStringTable);
-  data->d_type = ELF_T_BYTE;
-  data->d_size = shStringTable->size;
-  data->d_version = EV_CURRENT;
+  shStrTabSection.data->d_align = 1;
+  shStrTabSection.data->d_off = 0LL;
+  shStrTabSection.data->d_buf = stringTableToBuffer(shStringTable);
+  shStrTabSection.data->d_type = ELF_T_BYTE;
+  shStrTabSection.data->d_size = shStringTable->size;
+  shStrTabSection.data->d_version = EV_CURRENT;
 
-  if((shdr = elf64_getshdr(shStrTabScn)) == NULL)
+  if((shStrTabSection.shdr = elf64_getshdr(shStrTabSection.scn)) == NULL)
     errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
 
-  shdr->sh_name = shstrtabStr->index;
-  shdr->sh_type = SHT_STRTAB;
-  shdr->sh_flags = 0;
+  shStrTabSection.shdr->sh_name = shStrTabSection.string->index;
+  shStrTabSection.shdr->sh_type = SHT_STRTAB;
+  shStrTabSection.shdr->sh_flags = 0;
 
-  ehdr->e_shstrndx = elf_ndxscn(shStrTabScn);
+  ehdr->e_shstrndx = elf_ndxscn(shStrTabSection.scn);
 
   // ----------------------------------------------------------------------- //
 
@@ -422,81 +404,53 @@ int createSharedLibrary(int fd, char* provider, char *probe) {
 
   // ----------------------------------------------------------------------- //
 
-  if((shdr = elf64_getshdr(hashScn)) == NULL)
-    errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
-
-  shdr->sh_addr = shdr->sh_offset;
-  hashOffset = shdr->sh_offset;
+  hashSection.shdr->sh_addr = hashSection.shdr->sh_offset;
+  hashSection.offset = hashSection.shdr->sh_offset;
 
   // -- //
 
-  if((shdr = elf64_getshdr(dynSymScn)) == NULL)
-    errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
-
-  shdr->sh_addr = shdr->sh_offset;
-  dynSymOffset = shdr->sh_offset;
+  dynSymSection.shdr->sh_addr = dynSymSection.shdr->sh_offset;
+  dynSymSection.offset = dynSymSection.shdr->sh_offset;
 
   // -- //
 
-  if((shdr = elf64_getshdr(dynStrScn)) == NULL)
-    errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
-
-  shdr->sh_addr = shdr->sh_offset;
-  dynStrOffset = shdr->sh_offset;
+  dynStrSection.shdr->sh_addr = dynStrSection.shdr->sh_offset;
+  dynStrSection.offset = dynStrSection.shdr->sh_offset;
 
   // -- //
 
-  if((shdr = elf64_getshdr(textScn)) == NULL)
-    errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
-
-  shdr->sh_addr = shdr->sh_offset;
-  ehdr->e_entry = shdr->sh_addr;
-  textOffset = shdr->sh_offset;
+  textSection.shdr->sh_addr = textSection.shdr->sh_offset;
+  ehdr->e_entry = textSection.shdr->sh_addr;
+  textSection.offset = textSection.shdr->sh_offset;
 
 
   // -- //
 
-  if((shdr = elf64_getshdr(sdtBaseScn)) == NULL)
-    errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
-
-  shdr->sh_addr = shdr->sh_offset;
-  sdtBaseOffset = shdr->sh_offset;
+  sdtBaseSection.shdr->sh_addr = sdtBaseSection.shdr->sh_offset;
+  sdtBaseSection.offset = sdtBaseSection.shdr->sh_offset;
 
 
   // -- //
 
-  if((shdr = elf64_getshdr(ehFrameScn)) == NULL)
-    errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
-
-  shdr->sh_addr = shdr->sh_offset;
-  ehFrameOffset = shdr->sh_offset;
+  ehFrameSection.shdr->sh_addr = ehFrameSection.shdr->sh_offset;
+  ehFrameSection.offset = ehFrameSection.shdr->sh_offset;
 
   // -- //
 
-  if((shdr = elf64_getshdr(dynamicScn)) == NULL)
-    errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
-
-  shdr->sh_addr = PHDR_ALIGN + shdr->sh_offset;
-  dynamicOffset = shdr->sh_offset;
+  dynamicSection.shdr->sh_addr = PHDR_ALIGN + dynamicSection.shdr->sh_offset;
+  dynamicSection.offset = dynamicSection.shdr->sh_offset;
 
   // -- //
 
-  if((shdr = elf64_getshdr(sdtNoteScn)) == NULL)
-    errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
-
-  shdr->sh_addr = shdr->sh_offset;
-  sdtNoteOffset = shdr->sh_offset;
-  sdtNote->content.probePC = textOffset;
-  sdtNote->content.base_addr = sdtBaseOffset;
+  sdtNoteSection.shdr->sh_addr = sdtNoteSection.shdr->sh_offset;
+  sdtNoteSection.offset = sdtNoteSection.shdr->sh_offset;
+  sdtNote->content.probePC = textSection.offset;
+  sdtNote->content.base_addr = sdtBaseSection.offset;
   sdtNoteToBuffer(sdtNote, sdtNoteData);
 
   // -- //
 
-  if((shdr = elf64_getshdr(shStrTabScn)) == NULL)
-    errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
-
-  shStrTabOffset = shdr->sh_offset;
-  dynamicSize = shStrTabOffset - dynamicOffset;
+  shStrTabSection.offset = shStrTabSection.shdr->sh_offset;
 
   // -- //
 
@@ -515,30 +469,30 @@ int createSharedLibrary(int fd, char* provider, char *probe) {
   phdrLoad1->p_offset  = 0;
   phdrLoad1->p_vaddr   = 0;
   phdrLoad1->p_paddr   = 0;
-  phdrLoad1->p_filesz  = ehFrameOffset;   // FIXME: should be address at the end of text section
-  phdrLoad1->p_memsz   = ehFrameOffset;   // FIXME: should be address at the end of text section
+  phdrLoad1->p_filesz  = ehFrameSection.offset;
+  phdrLoad1->p_memsz   = ehFrameSection.offset;
   phdrLoad1->p_align   = PHDR_ALIGN;
 
   // Second LOAD PHDR
 
   phdrLoad2->p_type    = PT_LOAD;
   phdrLoad2->p_flags   = PF_W + PF_R;
-  phdrLoad2->p_offset  = ehFrameOffset;
-  phdrLoad2->p_vaddr   = ehFrameOffset + PHDR_ALIGN;
-  phdrLoad2->p_paddr   = ehFrameOffset + PHDR_ALIGN;
-  phdrLoad2->p_filesz  = dynamicSize;               // FIXME: should be size of dynamic section
-  phdrLoad2->p_memsz   = dynamicSize;               // FIXME: should be size of dynamic section
+  phdrLoad2->p_offset  = ehFrameSection.offset;
+  phdrLoad2->p_vaddr   = ehFrameSection.offset + PHDR_ALIGN;
+  phdrLoad2->p_paddr   = ehFrameSection.offset + PHDR_ALIGN;
+  phdrLoad2->p_filesz  = dynamicSection.data->d_size;
+  phdrLoad2->p_memsz   = dynamicSection.data->d_size;
   phdrLoad2->p_align   = PHDR_ALIGN;
 
   // Dynamic PHDR
 
   phdrDyn->p_type    = PT_DYNAMIC;
   phdrDyn->p_flags   = PF_W + PF_R;
-  phdrDyn->p_offset  = ehFrameOffset;
-  phdrDyn->p_vaddr   = ehFrameOffset + PHDR_ALIGN;
-  phdrDyn->p_paddr   = ehFrameOffset + PHDR_ALIGN;
-  phdrDyn->p_filesz  = dynamicSize;               // FIXME: should be size of dynamic section
-  phdrDyn->p_memsz   = dynamicSize;               // FIXME: should be size of dynamic section
+  phdrDyn->p_offset  = ehFrameSection.offset;
+  phdrDyn->p_vaddr   = ehFrameSection.offset + PHDR_ALIGN;
+  phdrDyn->p_paddr   = ehFrameSection.offset + PHDR_ALIGN;
+  phdrDyn->p_filesz  = dynamicSection.data->d_size;
+  phdrDyn->p_memsz   = dynamicSection.data->d_size;
   phdrDyn->p_align   = 0x8;  // XXX magic number?
 
   // Fix offsets DynSym
@@ -546,27 +500,27 @@ int createSharedLibrary(int fd, char* provider, char *probe) {
 
   dynSymData[0].st_value = 0;
 
-  dynSymData[1].st_value = textOffset;
-  dynSymData[1].st_shndx = elf_ndxscn(textScn);
+  dynSymData[1].st_value = textSection.offset;
+  dynSymData[1].st_shndx = elf_ndxscn(textSection.scn);
 
-  dynSymData[2].st_value = textOffset;
-  dynSymData[2].st_shndx = elf_ndxscn(textScn);
+  dynSymData[2].st_value = textSection.offset;
+  dynSymData[2].st_shndx = elf_ndxscn(textSection.scn);
 
-  dynSymData[3].st_value = PHDR_ALIGN + shStrTabOffset;
-  dynSymData[3].st_shndx = elf_ndxscn(dynamicScn);
+  dynSymData[3].st_value = PHDR_ALIGN + shStrTabSection.offset;
+  dynSymData[3].st_shndx = elf_ndxscn(dynamicSection.scn);
 
-  dynSymData[4].st_value = PHDR_ALIGN + shStrTabOffset;
-  dynSymData[4].st_shndx = elf_ndxscn(dynamicScn);
+  dynSymData[4].st_value = PHDR_ALIGN + shStrTabSection.offset;
+  dynSymData[4].st_shndx = elf_ndxscn(dynamicSection.scn);
 
-  dynSymData[5].st_value = PHDR_ALIGN + shStrTabOffset;
-  dynSymData[5].st_shndx = elf_ndxscn(dynamicScn);
+  dynSymData[5].st_value = PHDR_ALIGN + shStrTabSection.offset;
+  dynSymData[5].st_shndx = elf_ndxscn(dynamicSection.scn);
 
   // Fix offsets Dynamic
   // ----------------------------------------------------------------------- //
 
-  dynamicData[0].d_un.d_ptr = hashOffset;
-  dynamicData[1].d_un.d_ptr = dynStrOffset;
-  dynamicData[2].d_un.d_ptr = dynSymOffset;
+  dynamicData[0].d_un.d_ptr = hashSection.offset;
+  dynamicData[1].d_un.d_ptr = dynStrSection.offset;
+  dynamicData[2].d_un.d_ptr = dynSymSection.offset;
   dynamicData[3].d_un.d_val = dynamicString->size;
   dynamicData[4].d_un.d_val = sizeof(Elf64_Sym);
 
