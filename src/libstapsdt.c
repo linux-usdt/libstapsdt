@@ -95,11 +95,11 @@ Elf *create_elf(int fd) {
 
   if (elf_version(EV_CURRENT) == EV_NONE) {
     errx(EXIT_FAILURE, "ELF library initialization failed: %s", elf_errmsg(-1));
-}
+  }
 
   if ((e = elf_begin(fd, ELF_C_WRITE, NULL)) == NULL) {
     errx(EXIT_FAILURE, "elf_begin failed: %s", elf_errmsg(-1));
-}
+  }
 
   return e;
 }
@@ -140,7 +140,7 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if ((ehdr = elf64_newehdr(e)) == NULL) {
     errx(EXIT_FAILURE, "elf64_newehdr failed: %s", elf_errmsg(-1));
-}
+  }
 
   ehdr->e_ident[EI_DATA] = ELFDATA2LSB;
   ehdr->e_type = ET_DYN;
@@ -154,7 +154,7 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if ((phdrLoad1 = elf64_newphdr(e, 3)) == NULL) {
     errx(EXIT_FAILURE, "elf64_newphdr failed: %s", elf_errmsg(-1));
-}
+  }
 
   phdrDyn = &phdrLoad1[2];
   phdrLoad2 = &phdrLoad1[1];
@@ -164,11 +164,11 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if ((hashSection.scn = elf_newscn(e)) == NULL) {
     errx(EXIT_FAILURE, "elf_newscn failed: %s", elf_errmsg(-1));
-}
+  }
 
   if ((hashSection.data = elf_newdata(hashSection.scn)) == NULL) {
     errx(EXIT_FAILURE, "elf_newdata failed: %s", elf_errmsg(-1));
-}
+  }
 
   hashSection.data->d_align = 8;
   hashSection.data->d_off = 0LL;
@@ -179,7 +179,7 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if ((hashSection.shdr = elf64_getshdr(hashSection.scn)) == NULL) {
     errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
-}
+  }
 
   hashSection.shdr->sh_name = hashSection.string->index;
   hashSection.shdr->sh_type = SHT_HASH;
@@ -190,11 +190,11 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if ((dynSymSection.scn = elf_newscn(e)) == NULL) {
     errx(EXIT_FAILURE, "elf_newscn failed: %s", elf_errmsg(-1));
-}
+  }
 
   if ((dynSymSection.data = elf_newdata(dynSymSection.scn)) == NULL) {
     errx(EXIT_FAILURE, "elf_newdata failed: %s", elf_errmsg(-1));
-}
+  }
 
   dynSymSection.data->d_align = 8;
   dynSymSection.data->d_off = 0LL;
@@ -205,7 +205,7 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if ((dynSymSection.shdr = elf64_getshdr(dynSymSection.scn)) == NULL) {
     errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
-}
+  }
 
   dynSymSection.shdr->sh_name = dynSymSection.string->index;
   dynSymSection.shdr->sh_type = SHT_DYNSYM;
@@ -219,11 +219,11 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if ((dynStrSection.scn = elf_newscn(e)) == NULL) {
     errx(EXIT_FAILURE, "elf_newscn failed: %s", elf_errmsg(-1));
-}
+  }
 
   if ((dynStrSection.data = elf_newdata(dynStrSection.scn)) == NULL) {
     errx(EXIT_FAILURE, "elf_newdata failed: %s", elf_errmsg(-1));
-}
+  }
 
   dynStrSection.data->d_align = 1;
   dynStrSection.data->d_off = 0LL;
@@ -235,7 +235,7 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if ((dynStrSection.shdr = elf64_getshdr(dynStrSection.scn)) == NULL) {
     errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
-}
+  }
 
   dynStrSection.shdr->sh_name = dynStrSection.string->index;
   dynStrSection.shdr->sh_type = SHT_STRTAB;
@@ -248,11 +248,11 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if ((textSection.scn = elf_newscn(e)) == NULL) {
     errx(EXIT_FAILURE, "elf_newscn failed: %s", elf_errmsg(-1));
-}
+  }
 
   if ((textSection.data = elf_newdata(textSection.scn)) == NULL) {
     errx(EXIT_FAILURE, "elf_newdata failed: %s", elf_errmsg(-1));
-}
+  }
 
   textSection.data->d_align = 16;
   textSection.data->d_off = 0LL;
@@ -264,7 +264,7 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if ((textSection.shdr = elf64_getshdr(textSection.scn)) == NULL) {
     errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
-}
+  }
 
   textSection.shdr->sh_name = textSection.string->index;
   textSection.shdr->sh_type = SHT_PROGBITS;
@@ -275,11 +275,11 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if ((sdtBaseSection.scn = elf_newscn(e)) == NULL) {
     errx(EXIT_FAILURE, "elf_newscn failed: %s", elf_errmsg(-1));
-}
+  }
 
   if ((sdtBaseSection.data = elf_newdata(sdtBaseSection.scn)) == NULL) {
     errx(EXIT_FAILURE, "elf_newdata failed: %s", elf_errmsg(-1));
-}
+  }
 
   sdtBaseSection.data->d_align = 1;
   sdtBaseSection.data->d_off = 0LL;
@@ -290,7 +290,7 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if ((sdtBaseSection.shdr = elf64_getshdr(sdtBaseSection.scn)) == NULL) {
     errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
-}
+  }
 
   sdtBaseSection.shdr->sh_name = sdtBaseSection.string->index;
   sdtBaseSection.shdr->sh_type = SHT_PROGBITS;
@@ -301,11 +301,11 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if ((ehFrameSection.scn = elf_newscn(e)) == NULL) {
     errx(EXIT_FAILURE, "elf_newscn failed: %s", elf_errmsg(-1));
-}
+  }
 
   if ((ehFrameSection.data = elf_newdata(ehFrameSection.scn)) == NULL) {
     errx(EXIT_FAILURE, "elf_newdata failed: %s", elf_errmsg(-1));
-}
+  }
 
   ehFrameSection.data->d_align = 8;
   ehFrameSection.data->d_off = 0LL;
@@ -316,7 +316,7 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if ((ehFrameSection.shdr = elf64_getshdr(ehFrameSection.scn)) == NULL) {
     errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
-}
+  }
 
   ehFrameSection.shdr->sh_name = ehFrameSection.string->index;
   ehFrameSection.shdr->sh_type = SHT_PROGBITS;
@@ -327,11 +327,11 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if ((dynamicSection.scn = elf_newscn(e)) == NULL) {
     errx(EXIT_FAILURE, "elf_newscn failed: %s", elf_errmsg(-1));
-}
+  }
 
   if ((dynamicSection.data = elf_newdata(dynamicSection.scn)) == NULL) {
     errx(EXIT_FAILURE, "elf_newdata failed: %s", elf_errmsg(-1));
-}
+  }
 
   dynamicSection.data->d_align = 8;
   dynamicSection.data->d_off = 0LL;
@@ -342,7 +342,7 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if ((dynamicSection.shdr = elf64_getshdr(dynamicSection.scn)) == NULL) {
     errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
-}
+  }
 
   dynamicSection.shdr->sh_name = dynamicSection.string->index;
   dynamicSection.shdr->sh_type = SHT_DYNAMIC;
@@ -354,11 +354,11 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if ((sdtNoteSection.scn = elf_newscn(e)) == NULL) {
     errx(EXIT_FAILURE, "elf_newscn failed: %s", elf_errmsg(-1));
-}
+  }
 
   if ((sdtNoteSection.data = elf_newdata(sdtNoteSection.scn)) == NULL) {
     errx(EXIT_FAILURE, "elf_newdata failed: %s", elf_errmsg(-1));
-}
+  }
 
   sdtNoteSection.data->d_align = 4;
   sdtNoteSection.data->d_off = 0LL;
@@ -369,7 +369,7 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if ((sdtNoteSection.shdr = elf64_getshdr(sdtNoteSection.scn)) == NULL) {
     errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
-}
+  }
 
   sdtNoteSection.shdr->sh_name = sdtNoteSection.string->index;
   sdtNoteSection.shdr->sh_type = SHT_NOTE;
@@ -380,11 +380,11 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if ((shStrTabSection.scn = elf_newscn(e)) == NULL) {
     errx(EXIT_FAILURE, "elf_newscn failed: %s", elf_errmsg(-1));
-}
+  }
 
   if ((shStrTabSection.data = elf_newdata(shStrTabSection.scn)) == NULL) {
     errx(EXIT_FAILURE, "elf_newdata failed: %s", elf_errmsg(-1));
-}
+  }
 
   shStrTabSection.data->d_align = 1;
   shStrTabSection.data->d_off = 0LL;
@@ -395,7 +395,7 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if ((shStrTabSection.shdr = elf64_getshdr(shStrTabSection.scn)) == NULL) {
     errx(EXIT_FAILURE, "elf64_getshdr failed: %s", elf_errmsg(-1));
-}
+  }
 
   shStrTabSection.shdr->sh_name = shStrTabSection.string->index;
   shStrTabSection.shdr->sh_type = SHT_STRTAB;
@@ -407,7 +407,7 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if (elf_update(e, ELF_C_NULL) < 0) {
     errx(EXIT_FAILURE, "elf_update(NULL) failed: %s", elf_errmsg(-1));
-}
+  }
 
   // ----------------------------------------------------------------------- //
 
@@ -463,7 +463,7 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if (elf_update(e, ELF_C_NULL) < 0) {
     errx(EXIT_FAILURE, "elf_update(NULL) failed: %s", elf_errmsg(-1));
-}
+  }
 
   // ----------------------------------------------------------------------- //
   // Fill PHDRs
@@ -536,7 +536,7 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   if (elf_update(e, ELF_C_WRITE) < 0) {
     errx(EXIT_FAILURE, "elf_updateWRITENULL) failed: %s", elf_errmsg(-1));
-}
+  }
 
   (void)elf_end(e);
 
@@ -556,7 +556,7 @@ void *registerProbe(char *provider, char *probe) {
 
   if ((fd = mkstemp(filename)) < 0) {
     return NULL;
-}
+  }
 
   createSharedLibrary(fd, provider, probe);
   handle = dlopen(filename, RTLD_LAZY);
