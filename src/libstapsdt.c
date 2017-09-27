@@ -406,7 +406,6 @@ void *registerProbe(char *provider, char *probe) {
     fputs(error, stderr);
     return NULL;
   }
-  printf("Eta\n");
 
   (void)close(fd);
   return fireProbe;
