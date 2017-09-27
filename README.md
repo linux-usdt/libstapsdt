@@ -60,7 +60,7 @@ make demo  # Executable will be available at ./out/demo
 Usage:
 
 ```bash
-./out/demo PROVIDER_NAME PROBE_NAME
+./demo PROVIDER_NAME PROBE_NAME
 ```
 
 After running the demo program, it can be instrumented with proper tools.

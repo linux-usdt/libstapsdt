@@ -1,40 +1,30 @@
 CC=gcc
-CFLAGS=
+CFLAGS=-fPIC
 LDFLAGS=-lelf -ldl
 
-all: out/libstapsdt.a
+OBJECTS = $(patsubst src/%.c, build/lib/%.o, $(wildcard src/*.c))
+HEADERS = $(wildcard src/*.h)
 
-build/libstapsdt-x86_64.o: src/asm/libstapsdt-x86_64.s
+all: out/libstapsdt.a out/libstapsdt.so
+
+build/lib/libstapsdt-x86_64.o: src/asm/libstapsdt-x86_64.s
 	mkdir -p build
 	$(CC) $(CFLAGS) -c $^ -o $@
 
-build/libstapsdt.o: src/libstapsdt.c
-	mkdir -p build
-	$(CC) $(CFLAGS) -c $^ -o $@
+build/lib/%.o: src/%.c $(HEADERS)
+	mkdir -p build/lib/
+	$(CC) $(CFLAGS) -c $< -o $@
 
-build/sdtnote.o: src/sdtnote.c
-	mkdir -p build
-	$(CC) $(CFLAGS) -c $^ -o $@
-
-build/util.o: src/util.c
-	mkdir -p build
-	$(CC) $(CFLAGS) -c $^ -o $@
-
-build/string-table.o: src/string-table.c
-	mkdir -p build
-	$(CC) $(CFLAGS) -c $^ -o $@
-
-build/dynamic-symbols.o: src/dynamic-symbols.c
-	mkdir -p build
-	$(CC) $(CFLAGS) -c $^ -o $@
-
-out/libstapsdt.a: build/libstapsdt-x86_64.o build/libstapsdt.o build/util.o build/sdtnote.o build/string-table.o build/dynamic-symbols.o
+out/libstapsdt.a: $(OBJECTS) build/lib/libstapsdt-x86_64.o
 	mkdir -p out
 	ar rcs $@ $^
 
-demo: all demo/demo.c
-	$(CC) -c demo/demo.c -o build/demo.o -Isrc/
-	$(CC) build/demo.o out/libstapsdt.a -o out/demo $(LDFLAGS)
+out/libstapsdt.so: $(OBJECTS) build/lib/libstapsdt-x86_64.o
+	mkdir -p out
+	$(CC) -shared -o $@ $^
+
+demo: all example/demo.c
+	$(CC) example/demo.c out/libstapsdt.a -o demo -Isrc/ $(LDFLAGS)
 
 clear:
 	rm -rf build/*
@@ -45,3 +35,5 @@ lint:
 
 format:
 	clang-tidy src/*.h src/*.c -fix
+
+.PHONY: all clear lint format
