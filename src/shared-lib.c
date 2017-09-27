@@ -86,7 +86,7 @@ void *createDynSymData(DynamicSymbolTable *table) {
   size_t symbolsCount = (5 + table->count);
   int i;
   DynamicSymbolList *current;
-  Elf64_Sym *dynsyms = malloc(sizeof(Elf64_Sym) * (5 + table->count));
+  Elf64_Sym *dynsyms = calloc(sizeof(Elf64_Sym), (5 + table->count));
 
   for (i = 0; i < symbolsCount; i++) {
     dynsyms[i].st_name = 0;
@@ -120,7 +120,7 @@ void *createDynSymData(DynamicSymbolTable *table) {
 
 // TODO(matheus): dynamic strings creation
 void *createDynamicData() {
-  Elf64_Dyn *dyns = malloc(sizeof(Elf64_Dyn) * 11);
+  Elf64_Dyn *dyns = calloc(sizeof(Elf64_Dyn), 11);
 
   for (int i = 0; i < 11; i++) {
     dyns[i].d_tag = DT_NULL;
@@ -135,7 +135,7 @@ void *createDynamicData() {
 }
 
 DynElf *dynElfInit(int fd) {
-  DynElf *dynElf = (DynElf *)malloc(sizeof(DynElf));
+  DynElf *dynElf = (DynElf *)calloc(sizeof(DynElf), 1);
 
   if(createElfStringTables(dynElf) == -1) {
     // TODO (mmarchini) error message
@@ -181,7 +181,9 @@ int dynElfAddProbe(DynElf *dynElf, char *provider, char *probe) {
 int dynElfSave(DynElf *dynElf) {
   Elf64_Sym *dynSymData = createDynSymData(dynElf->dynamicSymbols);
   Elf64_Dyn *dynamicData = createDynamicData();
-  void *sdtNoteData = malloc(sdtNoteSize(dynElf->sdtNote));
+  void *sdtNoteData = calloc(sdtNoteSize(dynElf->sdtNote), 1);
+  void *stringTableData = stringTableToBuffer(dynElf->stringTable),
+       *dynamicStringData = stringTableToBuffer(dynElf->dynamicString);
 
   // ----------------------------------------------------------------------- //
   // Section: HASH
@@ -219,7 +221,7 @@ int dynElfSave(DynElf *dynElf) {
 
   dynElf->sections.dynStr->data->d_align = 1;
   dynElf->sections.dynStr->data->d_off = 0LL;
-  dynElf->sections.dynStr->data->d_buf = stringTableToBuffer(dynElf->dynamicString);
+  dynElf->sections.dynStr->data->d_buf = dynamicStringData;
 
   dynElf->sections.dynStr->data->d_type = ELF_T_BYTE;
   dynElf->sections.dynStr->data->d_size = dynElf->dynamicString->size;
@@ -308,7 +310,7 @@ int dynElfSave(DynElf *dynElf) {
 
   dynElf->sections.shStrTab->data->d_align = 1;
   dynElf->sections.shStrTab->data->d_off = 0LL;
-  dynElf->sections.shStrTab->data->d_buf = stringTableToBuffer(dynElf->stringTable);
+  dynElf->sections.shStrTab->data->d_buf = stringTableData;
   dynElf->sections.shStrTab->data->d_type = ELF_T_BYTE;
   dynElf->sections.shStrTab->data->d_size = dynElf->stringTable->size;
   dynElf->sections.shStrTab->data->d_version = EV_CURRENT;
@@ -452,5 +454,72 @@ int dynElfSave(DynElf *dynElf) {
     return -1;
   }
 
+  free(dynSymData);
+  free(dynamicData);
+  free(sdtNoteData);
+  free(stringTableData);
+  free(dynamicStringData);
   return 0;
+}
+
+void dynElfSectionsClose(SectionsList *sections) {
+  if(sections->hash != NULL) {
+    sectionFree(sections->hash);
+  }
+
+  if(sections->dynSym != NULL) {
+    sectionFree(sections->dynSym);
+  }
+
+  if(sections->dynStr != NULL) {
+    sectionFree(sections->dynStr);
+  }
+
+  if(sections->text != NULL) {
+    sectionFree(sections->text);
+  }
+
+  if(sections->sdtBase != NULL) {
+    sectionFree(sections->sdtBase);
+  }
+
+  if(sections->ehFrame != NULL) {
+    sectionFree(sections->ehFrame);
+  }
+
+  if(sections->dynamic != NULL) {
+    sectionFree(sections->dynamic);
+  }
+
+  if(sections->sdtNote != NULL) {
+    sectionFree(sections->sdtNote);
+  }
+
+  if(sections->shStrTab != NULL) {
+    sectionFree(sections->shStrTab);
+  }
+}
+
+
+void dynElfClose(DynElf *dynElf) {
+  if(dynElf->stringTable != NULL) {
+    stringTableFree(dynElf->stringTable);
+  }
+
+  if(dynElf->dynamicString != NULL) {
+    stringTableFree(dynElf->dynamicString);
+  }
+
+  if(dynElf->dynamicSymbols != NULL) {
+    dynamicSymbolTableFree(dynElf->dynamicSymbols);
+  }
+
+  if(dynElf->sdtNote != NULL) {
+    sdtNoteFree(dynElf->sdtNote);
+  }
+
+  dynElfSectionsClose(&dynElf->sections);
+
+  (void)elf_end(dynElf->elf);
+  free(dynElf);
 }

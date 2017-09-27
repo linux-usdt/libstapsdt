@@ -23,4 +23,6 @@ StringTableNode *stringTableAdd(StringTable *stringTable, char *str);
 
 char *stringTableToBuffer(StringTable *stringTable);
 
+void stringTableFree(StringTable *stringTable);
+
 #endif

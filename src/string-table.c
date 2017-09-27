@@ -4,15 +4,15 @@
 #include "string-table.h"
 
 StringTable *stringTableInit() {
-  StringTable *stringTable = (StringTable *)malloc(sizeof(StringTable));
+  StringTable *stringTable = (StringTable *)calloc(sizeof(StringTable), 1);
   stringTable->count = 1;
   stringTable->size = 1;
 
-  stringTable->first = (StringTableNode *)malloc(sizeof(StringTableNode));
+  stringTable->first = (StringTableNode *)calloc(sizeof(StringTableNode), 1);
 
   stringTable->first->index = 0;
   stringTable->first->size = 1;
-  stringTable->first->str = (char *)malloc(sizeof(char));
+  stringTable->first->str = (char *)calloc(sizeof(char), 1);
   stringTable->first->str[0] = '\0';
   stringTable->first->next = NULL;
 
@@ -26,13 +26,13 @@ StringTableNode *stringTableAdd(StringTable *stringTable, char *str) {
        current = current->next) {
   }
 
-  current->next = (StringTableNode *)malloc(sizeof(StringTableNode));
+  current->next = (StringTableNode *)calloc(sizeof(StringTableNode), 1);
   current->next->index = current->index + current->size;
 
   current = current->next;
   current->size = strlen(str) + 1;
 
-  current->str = (char *)malloc(current->size);
+  current->str = (char *)calloc(current->size, 1);
   memcpy(current->str, str, current->size);
   current->next = NULL;
 
@@ -45,7 +45,7 @@ StringTableNode *stringTableAdd(StringTable *stringTable, char *str) {
 char *stringTableToBuffer(StringTable *stringTable) {
   int offset;
   StringTableNode *current;
-  char *buffer = (char *)malloc(stringTable->size);
+  char *buffer = (char *)calloc(stringTable->size, 1);
 
   for (current = stringTable->first, offset = 0; current != NULL;
        offset += current->size, current = current->next) {
@@ -53,4 +53,15 @@ char *stringTableToBuffer(StringTable *stringTable) {
   }
 
   return buffer;
+}
+
+void stringTableFree(StringTable *table) {
+  StringTableNode *node=NULL, *next=NULL;
+  for(node=table->first; node!=NULL; node=next) {
+    free(node->str);
+
+    next=node->next;
+    free(node);
+  }
+  free(table);
 }

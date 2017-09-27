@@ -28,4 +28,6 @@ SDTNote *sdtNoteInit(char *provider, char *probe);
 
 int sdtNoteToBuffer(SDTNote *sdt, char *buffer);
 
+void sdtNoteFree(SDTNote *sdtNote);
+
 #endif

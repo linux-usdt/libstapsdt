@@ -29,4 +29,6 @@ DynamicSymbolTable *dynamicSymbolTableInit(StringTable *dynamicString);
 DynamicSymbol *dynamicSymbolTableAdd(DynamicSymbolTable *table,
                                      char *symbolName);
 
+void dynamicSymbolTableFree(DynamicSymbolTable *table);
+
 #endif

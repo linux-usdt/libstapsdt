@@ -1,6 +1,7 @@
 # libstapsdt
 
-[![Stability](https://img.shields.io/badge/status-unstable-lightgrey.svg?style=flat-square)](https://github.com/mmarchini/libstapsdt)
+[![Stability](https://img.shields.io/badge/version-unstable-lightgrey.svg?style=flat-square)](https://github.com/mmarchini/libstapsdt)
+[![Build Status](https://img.shields.io/travis/mmarchini/libstapsdt/master.svg?style=flat-square)](https://travis-ci.org/mmarchini/libstapsdt)
 
 `libstapsdt` is a library which allows creating and firing Systemtap's USDT
 probes at runtime. It's inspired on
@@ -70,4 +71,13 @@ Here's an example using [eBPF/bcc](https://github.com/iovisor/bcc) trace tool
 
 ```bash
 sudo /usr/share/bcc/tools/trace -p $(pgrep demo) 'u::PROBE_NAME'
+```
+
+## Run tests
+
+To run tests, just run the command below. Please be aware that there are only
+a few tests for now, but more will be added in the future.
+
+```bash
+make test
 ```
