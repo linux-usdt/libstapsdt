@@ -14,4 +14,6 @@ typedef struct {
   StringTableNode *string;
 } Section;
 
+Section *sectionInit(Elf *e, StringTable *table, char *name);
+
 #endif
