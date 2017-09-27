@@ -54,3 +54,6 @@ dkms.conf
 out/
 build/
 core
+
+demo
+test-memory-leaks

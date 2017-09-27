@@ -1,7 +1,7 @@
 #include "section.h"
 
 Section *sectionInit(Elf *e, StringTable *table, char *name) {
-  Section *section = malloc(sizeof(Section));
+  Section *section = calloc(sizeof(Section), 1);
 
   section->string = stringTableAdd(table, name);
 
@@ -21,4 +21,10 @@ Section *sectionInit(Elf *e, StringTable *table, char *name) {
   }
 
   return section;
+}
+
+
+void sectionFree(Section *section) {
+  // Fields are just references, shouldn't be freed here
+  free(section);
 }

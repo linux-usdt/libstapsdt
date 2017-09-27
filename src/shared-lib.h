@@ -42,4 +42,6 @@ int dynElfAddProbe(DynElf *dynElf, char *provider, char *probe);
 
 int dynElfSave(DynElf *dynElf);
 
+void dynElfClose(DynElf *dynElf);
+
 #endif

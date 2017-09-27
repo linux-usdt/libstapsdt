@@ -28,7 +28,7 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
     return -1;
   }
 
-  (void)elf_end(dynElf->elf);
+  dynElfClose(dynElf);
 
   /* Finished */
   return 0;

@@ -1,5 +1,6 @@
+
 CC=gcc
-CFLAGS=-fPIC
+CFLAGS= -std=gnu11
 LDFLAGS=-lelf -ldl
 
 OBJECTS = $(patsubst src/%.c, build/lib/%.o, $(wildcard src/*.c))
@@ -9,11 +10,11 @@ all: out/libstapsdt.a out/libstapsdt.so
 
 build/lib/libstapsdt-x86_64.o: src/asm/libstapsdt-x86_64.s
 	mkdir -p build
-	$(CC) $(CFLAGS) -c $^ -o $@
+	$(CC) $(CFLAGS) -fPIC -c $^ -o $@
 
 build/lib/%.o: src/%.c $(HEADERS)
 	mkdir -p build/lib/
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -fPIC -c $< -o $@
 
 out/libstapsdt.a: $(OBJECTS) build/lib/libstapsdt-x86_64.o
 	mkdir -p out
@@ -21,10 +22,13 @@ out/libstapsdt.a: $(OBJECTS) build/lib/libstapsdt-x86_64.o
 
 out/libstapsdt.so: $(OBJECTS) build/lib/libstapsdt-x86_64.o
 	mkdir -p out
-	$(CC) -shared -o $@ $^
+	$(CC) $(CFLAGS) -shared -o $@ $^
 
 demo: all example/demo.c
-	$(CC) example/demo.c out/libstapsdt.a -o demo -Isrc/ $(LDFLAGS)
+	$(CC) $(CFLAGS) example/demo.c out/libstapsdt.a -o demo -Isrc/ $(LDFLAGS)
+
+test: all
+	make -C ./tests/
 
 clear:
 	rm -rf build/*
@@ -36,4 +40,4 @@ lint:
 format:
 	clang-tidy src/*.h src/*.c -fix
 
-.PHONY: all clear lint format
+.PHONY: all clear lint format build-tests

@@ -16,14 +16,14 @@ size_t sdtNoteSize(SDTNote *sdt) {
 }
 
 SDTNote *sdtNoteInit(char *provider, char *probe) {
-  SDTNote *sdt = malloc(sizeof(SDTNote));
+  SDTNote *sdt = calloc(sizeof(SDTNote), 1);
   size_t descsz = 0, providersz = strlen(provider) + 1,
          probesz = strlen(probe) + 1;
   sdt->header.n_type = NT_STAPSDT;
   sdt->header.n_namesz = sizeof(NT_STAPSDT_NAME);
 
   // TODO(mmarchini): should add pad if sizeof(NT_STAPSDT)%4 != 0
-  sdt->name = malloc(sizeof(NT_STAPSDT_NAME));
+  sdt->name = calloc(sizeof(NT_STAPSDT_NAME), 1);
   memcpy(sdt->name, NT_STAPSDT_NAME, strlen(NT_STAPSDT_NAME) + 1);
 
   sdt->content.probePC = -1;
@@ -33,15 +33,15 @@ SDTNote *sdtNoteInit(char *provider, char *probe) {
   sdt->content.sem_addr = 0;
   descsz += sizeof(sdt->content.sem_addr);
 
-  sdt->content.provider = malloc(providersz);
+  sdt->content.provider = calloc(providersz, 1);
   descsz += providersz;
   memcpy(sdt->content.provider, provider, providersz);
 
-  sdt->content.probe = malloc(probesz);
+  sdt->content.probe = calloc(probesz, 1);
   descsz += probesz;
   memcpy(sdt->content.probe, probe, probesz);
 
-  sdt->content.argFmt = malloc(sizeof(char));
+  sdt->content.argFmt = calloc(sizeof(char), 1);
   sdt->content.argFmt[0] = '\0';
   descsz += sizeof(char);
 
@@ -89,4 +89,13 @@ int sdtNoteToBuffer(SDTNote *sdt, char *buffer) {
   }
 
   return 0;
+}
+
+void sdtNoteFree(SDTNote *sdtNote) {
+  free(sdtNote->name);
+  free(sdtNote->content.provider);
+  free(sdtNote->content.probe);
+  free(sdtNote->content.argFmt);
+
+  free(sdtNote);
 }

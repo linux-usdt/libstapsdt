@@ -16,4 +16,6 @@ typedef struct {
 
 Section *sectionInit(Elf *e, StringTable *table, char *name);
 
+void sectionFree(Section *section);
+
 #endif

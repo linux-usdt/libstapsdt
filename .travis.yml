@@ -1,0 +1,13 @@
+language: c
+
+compiler: gcc
+dist: trusty
+sudo: required
+
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y libelf1 libelf-dev nasm valgrind
+
+script:
+  - make test
+  - make lint

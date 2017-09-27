@@ -4,7 +4,7 @@
 
 DynamicSymbolTable *dynamicSymbolTableInit(StringTable *dynamicString) {
   DynamicSymbolTable *dynSymTab =
-      (DynamicSymbolTable *)malloc(sizeof(DynamicSymbolTable));
+      (DynamicSymbolTable *)calloc(sizeof(DynamicSymbolTable), 1);
 
   dynSymTab->stringTable = dynamicString;
 
@@ -20,7 +20,7 @@ DynamicSymbolTable *dynamicSymbolTableInit(StringTable *dynamicString) {
 
 DynamicSymbol *dynamicSymbolTableAdd(DynamicSymbolTable *table,
                                      char *symbolName) {
-  DynamicSymbolList *symbol = (DynamicSymbolList *)malloc(sizeof(DynamicSymbolList));
+  DynamicSymbolList *symbol = (DynamicSymbolList *)calloc(sizeof(DynamicSymbolList), 1);
 
   symbol->symbol.string = stringTableAdd(table->stringTable, symbolName);
 
@@ -29,4 +29,13 @@ DynamicSymbol *dynamicSymbolTableAdd(DynamicSymbolTable *table,
   table->count += 1;
 
   return &(symbol->symbol);
+}
+
+void dynamicSymbolTableFree(DynamicSymbolTable *table) {
+  DynamicSymbolList *node=NULL, *next=NULL;
+  for(node=table->symbols; node!=NULL; node=next) {
+    next=node->next;
+    free(node);
+  }
+  free(table);
 }
