@@ -39,3 +39,9 @@ demo: all demo/demo.c
 clear:
 	rm -rf build/*
 	rm -rf out/*
+
+lint:
+	clang-tidy src/*.h src/*.c
+
+format:
+	clang-tidy src/*.h src/*.c -fix

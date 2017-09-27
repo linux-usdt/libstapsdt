@@ -1,8 +1,8 @@
 #ifndef _DYNAMIC_SYMBOLS_
 #define _DYNAMIC_SYMBOLS_
 
-#include <libelf.h>
 #include "string-table.h"
+#include <libelf.h>
 
 typedef struct {
   StringTableNode *string;
@@ -26,6 +26,7 @@ typedef struct {
 } DynamicSymbolTable;
 
 DynamicSymbolTable *dynamicSymbolTableInit(StringTable *dynamicString);
-DynamicSymbol *dynamicSymbolTableAdd(DynamicSymbolTable *table, char *symbolName);
+DynamicSymbol *dynamicSymbolTableAdd(DynamicSymbolTable *table,
+                                     char *symbolName);
 
 #endif
