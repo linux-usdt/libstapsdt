@@ -3,6 +3,23 @@
 
 #include "section.h"
 #include "string-table.h"
+#include "sdtnote.h"
+#include "dynamic-symbols.h"
+
+#define PROBE_SYMBOL "lorem"
+
+typedef struct {
+  Section
+    *hash,
+    *dynSym,
+    *dynStr,
+    *text,
+    *sdtBase,
+    *ehFrame,
+    *dynamic,
+    *sdtNote,
+    *shStrTab;
+} SectionsList;
 
 typedef struct {
   Elf *elf;
@@ -12,21 +29,17 @@ typedef struct {
   StringTable *stringTable;
   StringTable *dynamicString;
 
-  Section *sectionsList[9];
-  struct {
-    Section
-      *hash,
-      *dynSym,
-      *dynStr,
-      *text,
-      *sdtBase,
-      *ehFrame,
-      *dynamic,
-      *sdtNote,
-      *shStrTab;
-  } sections;
+  DynamicSymbolTable *dynamicSymbols;
+
+  SDTNote *sdtNote;
+
+  SectionsList sections;
 } DynElf;
 
 DynElf *dynElfInit();
+
+int dynElfAddProbe(DynElf *dynElf, char *provider, char *probe);
+
+int dynElfSave(DynElf *dynElf);
 
 #endif
