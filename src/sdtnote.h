@@ -16,9 +16,9 @@ typedef struct SDTNote_ {
     Elf64_Xword probePC;
     Elf64_Xword base_addr;
     Elf64_Xword sem_addr;
-    char *provider;   // mainer
-    char *probe;      //
-    char *argFmt;  // \0
+    char *provider; // mainer
+    char *probe;    //
+    char *argFmt;   // \0
   } content;
 } SDTNote;
 
