@@ -1,0 +1,8 @@
+module: Some awesome title (max of 50 characters)
+
+Your message, describing why (and not what) was changed. Reference to
+Pull Requests and issues must be placed at the end of the message. 
+Message's body must be wrapped at 72 characters.
+
+Ref: https://github.com/mmarchini/libstapsdt/issues/2
+Fixex: https://github.com/mmarchini/libstapsdt/issues/1
