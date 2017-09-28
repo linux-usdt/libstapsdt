@@ -1,7 +1,7 @@
 # libstapsdt
 
-[![Stability](https://img.shields.io/badge/version-unstable-lightgrey.svg?style=flat-square)](https://github.com/mmarchini/libstapsdt)
-[![Build Status](https://img.shields.io/travis/mmarchini/libstapsdt/master.svg?style=flat-square)](https://travis-ci.org/mmarchini/libstapsdt)
+[![Stability](https://img.shields.io/badge/version-unstable-lightgrey.svg?style=flat-square)](https://github.com/sthima/libstapsdt)
+[![Build Status](https://img.shields.io/travis/sthima/libstapsdt/master.svg?style=flat-square)](https://travis-ci.org/sthima/libstapsdt)
 
 `libstapsdt` is a library which allows creating and firing Systemtap's USDT
 probes at runtime. It's inspired on
