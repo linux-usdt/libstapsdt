@@ -3,21 +3,25 @@
 #include <libstapsdt.h>
 
 int main( int argc, char *argv[] ) {
-  int (*fireProbe)();
+  SDTProvider_t *provider;
+  SDTProbe_t *probe;
 
   if(argc != 3) {
     printf("usage: demo PROVIDER PROBE\n");
     return -1;
   }
 
-  fireProbe = registerProbe(argv[1], argv[2]);
+  provider = providerInit(argv[1]);
+  probe = providerAddProbe(provider, argv[2]);
 
-  if(fireProbe == NULL)
+  if(providerLoad(provider) == -1) {
+    printf("Something went wrong...\n");
     return -1;
+  }
 
   while(1) {
     printf("Firing probe...\n");
-    fireProbe();
+    probeFire(probe);
     printf("Probe fired!\n");
     sleep(3);
   }
