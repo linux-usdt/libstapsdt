@@ -36,7 +36,7 @@ typedef struct {
 
 DynElf *dynElfInit();
 
-int dynElfAddProbe(DynElf *dynElf, char *provider, char *probe);
+int dynElfAddProbe(DynElf *dynElf, SDTProbe_t *probe);
 
 int dynElfSave(DynElf *dynElf);
 
