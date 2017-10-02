@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <dlfcn.h>
 #include <err.h>
 #include <fcntl.h>
@@ -16,14 +17,12 @@
 #include "util.h"
 #include "libstapsdt.h"
 
-// ------------------------------------------------------------------------- //
-// TODO(mmarchini): dynamic strings creation
-
-int createSharedLibrary(int fd, char *provider, char *probe) {
-  // Dynamic strings
+int createSharedLibrary(int fd, SDTProvider_t *provider) {
   DynElf *dynElf = dynElfInit(fd);
 
-  dynElfAddProbe(dynElf, provider, probe);
+  for(SDTProbeList_t *node=provider->probes; node != NULL; node = node->next) {
+    dynElfAddProbe(dynElf, &(node->probe));
+  }
 
   if(dynElfSave(dynElf) == -1) {
     return -1;
@@ -31,7 +30,6 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
 
   dynElfClose(dynElf);
 
-  /* Finished */
   return 0;
 }
 
@@ -45,7 +43,12 @@ SDTProvider_t *providerInit(char *name) {
   return provider;
 }
 
-SDTProbe_t *providerAddProbe(SDTProvider_t *provider, char *name) {
+SDTProbe_t *providerAddProbe(SDTProvider_t *provider, char *name, int argCount, ...) {
+  int i;
+  va_list vl;
+  ArgType_t arg;
+  va_start(vl, argCount);
+
   SDTProbeList_t *probeList = (SDTProbeList_t *) calloc(sizeof(SDTProbeList_t), 1);
   probeList->probe._fire = NULL;
 
@@ -55,28 +58,37 @@ SDTProbe_t *providerAddProbe(SDTProvider_t *provider, char *name) {
   probeList->next = provider->probes;
   provider->probes = probeList;
 
+  probeList->probe.argCount = argCount;
+
+  for(i=0; i < argCount; i++) {
+    arg = va_arg(vl, ArgType_t);
+    probeList->probe.argFmt[i] = arg;
+  }
+
+  for(; i<MAX_ARGUMENTS; i++) {
+    probeList->probe.argFmt[i] = noarg;
+  }
+
+  probeList->probe.provider = provider;
+
   return &(probeList->probe);
 }
 
 int providerLoad(SDTProvider_t *provider) {
-  // TODO (mmarchini) multiple probes, better code to handle that
-  SDTProbe_t *probe = &(provider->probes->probe);
-
   int fd;
   void *handle;
   void *fireProbe;
-  char filename[sizeof("/tmp/") + sizeof(provider->name) + sizeof(probe->name) +
-                sizeof("XXXXXX") + 2];
+  char filename[sizeof("/tmp/") + sizeof(provider->name) + sizeof("XXXXXX") + 1];
   char *error;
 
-  sprintf(filename, "/tmp/%s-%s-XXXXXX", provider->name, probe->name);
+  sprintf(filename, "/tmp/%s-XXXXXX", provider->name);
 
   if ((fd = mkstemp(filename)) < 0) {
     printf("Couldn't create '%s'\n", filename);
     return -1;
   }
 
-  createSharedLibrary(fd, provider->name, probe->name);
+  createSharedLibrary(fd, provider);
   (void)close(fd);
 
   handle = dlopen(filename, RTLD_LAZY);
@@ -85,8 +97,10 @@ int providerLoad(SDTProvider_t *provider) {
     return -1;
   }
 
-  fireProbe = dlsym(handle, probe->name);
-  probe->_fire = fireProbe;
+  for(SDTProbeList_t *node=provider->probes; node != NULL; node = node->next) {
+    fireProbe = dlsym(handle, node->probe.name);
+    node->probe._fire = fireProbe;
+  }
 
   if ((error = dlerror()) != NULL) {
     fputs(error, stderr);
@@ -96,8 +110,40 @@ int providerLoad(SDTProvider_t *provider) {
   return 0;
 }
 
-void probeFire(SDTProbe_t *probe) {
-  ((void (*)())probe->_fire) ();
+void probeFire(SDTProbe_t *probe, ...) {
+  va_list vl;
+  va_start(vl, probe);
+  uint64_t arg[6] = {0};
+  for(int i=0; i < probe->argCount; i++) {
+    arg[i] = va_arg(vl, uint64_t);
+  }
+
+  switch(probe->argCount) {
+    case 0:
+      ((void (*)())probe->_fire) ();
+      return;
+    case 1:
+      ((void (*)())probe->_fire) (arg[0]);
+      return;
+    case 2:
+      ((void (*)())probe->_fire) (arg[0], arg[1]);
+      return;
+    case 3:
+      ((void (*)())probe->_fire) (arg[0], arg[1], arg[2]);
+      return;
+    case 4:
+      ((void (*)())probe->_fire) (arg[0], arg[1], arg[2], arg[3]);
+      return;
+    case 5:
+      ((void (*)())probe->_fire) (arg[0], arg[1], arg[2], arg[3], arg[4]);
+      return;
+    case 6:
+      ((void (*)())probe->_fire) (arg[0], arg[1], arg[2], arg[3], arg[4], arg[5]);
+      return;
+    default:
+      ((void (*)())probe->_fire) ();
+      return;
+  }
 }
 
 void providerDestroy(SDTProvider_t *provider) {

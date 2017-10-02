@@ -5,6 +5,8 @@
 int main( int argc, char *argv[] ) {
   SDTProvider_t *provider;
   SDTProbe_t *probe;
+  unsigned long long i=0;
+  int j=0;
 
   if(argc != 3) {
     printf("usage: demo PROVIDER PROBE\n");
@@ -12,7 +14,7 @@ int main( int argc, char *argv[] ) {
   }
 
   provider = providerInit(argv[1]);
-  probe = providerAddProbe(provider, argv[2]);
+  probe = providerAddProbe(provider, argv[2], 2, uint64, int64);
 
   if(providerLoad(provider) == -1) {
     printf("Something went wrong...\n");
@@ -21,7 +23,7 @@ int main( int argc, char *argv[] ) {
 
   while(1) {
     printf("Firing probe...\n");
-    probeFire(probe);
+    probeFire(probe, i++, j--);
     printf("Probe fired!\n");
     sleep(3);
   }

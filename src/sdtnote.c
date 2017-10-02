@@ -1,8 +1,36 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "sdtnote.h"
 #include "util.h"
+
+
+// TODO (mmarchini) add other architectures (this only works for x86_64)
+char *regMap(int idx) {
+    switch (idx) {
+      case 0:
+      return "rdi";
+        break;
+      case 1:
+        return "rsi";
+        break;
+      case 2:
+        return "rdx";
+        break;
+      case 3:
+        return "rcx";
+        break;
+      case 4:
+        return "r8";
+        break;
+      case 5:
+        return "r9";
+        break;
+      default:
+        return NULL;
+    }
+}
 
 size_t sdtNoteSize(SDTNote *sdt) {
   size_t size = 0;
@@ -15,16 +43,17 @@ size_t sdtNoteSize(SDTNote *sdt) {
   return size;
 }
 
-SDTNote *sdtNoteInit(char *provider, char *probe) {
+SDTNote *sdtNoteInit(SDTProbe_t *probe) {
+  char buf[100];
   SDTNote *sdt = calloc(sizeof(SDTNote), 1);
-  size_t descsz = 0, providersz = strlen(provider) + 1,
-         probesz = strlen(probe) + 1;
+  size_t descsz = 0, providersz = strlen(probe->provider->name) + 1,
+         probesz = strlen(probe->name) + 1;
   sdt->header.n_type = NT_STAPSDT;
   sdt->header.n_namesz = sizeof(NT_STAPSDT_NAME);
 
   // TODO(mmarchini): should add pad if sizeof(NT_STAPSDT)%4 != 0
   sdt->name = calloc(sizeof(NT_STAPSDT_NAME), 1);
-  memcpy(sdt->name, NT_STAPSDT_NAME, strlen(NT_STAPSDT_NAME) + 1);
+  strncpy(sdt->name, NT_STAPSDT_NAME, strlen(NT_STAPSDT_NAME) + 1);
 
   sdt->content.probePC = -1;
   descsz += sizeof(sdt->content.probePC);
@@ -35,15 +64,27 @@ SDTNote *sdtNoteInit(char *provider, char *probe) {
 
   sdt->content.provider = calloc(providersz, 1);
   descsz += providersz;
-  memcpy(sdt->content.provider, provider, providersz);
+  strncpy(sdt->content.provider, probe->provider->name, providersz);
 
   sdt->content.probe = calloc(probesz, 1);
   descsz += probesz;
-  memcpy(sdt->content.probe, probe, probesz);
+  strncpy(sdt->content.probe, probe->name, probesz);
 
   sdt->content.argFmt = calloc(sizeof(char), 1);
   sdt->content.argFmt[0] = '\0';
-  descsz += sizeof(char);
+  for(int i=0; i < probe->argCount; i++) {
+    sprintf(buf, "%d@%%%s", probe->argFmt[i], regMap(i));
+
+
+    if(i==0) {
+      sdt->content.argFmt = realloc(sdt->content.argFmt, strlen(sdt->content.argFmt) + strlen(buf) + 1);
+      sprintf(sdt->content.argFmt, "%s", buf);
+    } else {
+      sdt->content.argFmt = realloc(sdt->content.argFmt, strlen(sdt->content.argFmt) + strlen(buf) + 2);
+      sprintf(&(sdt->content.argFmt[strlen(sdt->content.argFmt)]), " %s", buf);
+    }
+  }
+  descsz += strlen(sdt->content.argFmt) + 1;
 
   sdt->header.n_descsz = descsz;
 

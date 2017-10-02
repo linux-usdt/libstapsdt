@@ -164,9 +164,9 @@ DynElf *dynElfInit(int fd) {
   return dynElf;
 }
 
-int dynElfAddProbe(DynElf *dynElf, char *provider, char *probe) {
-  dynElf->sdtNote = sdtNoteInit(provider, probe);
-  dynamicSymbolTableAdd(dynElf->dynamicSymbols, probe);
+int dynElfAddProbe(DynElf *dynElf, SDTProbe_t *probe) {
+  dynElf->sdtNote = sdtNoteInit(probe);
+  dynamicSymbolTableAdd(dynElf->dynamicSymbols, probe->name);
 
   return 0;
 }
