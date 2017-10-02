@@ -6,8 +6,6 @@
 #include "sdtnote.h"
 #include "dynamic-symbols.h"
 
-#define PROBE_SYMBOL "lorem"
-
 typedef struct {
   Section
     *hash,

@@ -1,16 +1,10 @@
 #include "shared-lib.h"
+#include "hash-table.h"
 
 #define PHDR_ALIGN 0x200000
 
 void _funcStart();
 void _funcEnd();
-
-// ------------------------------------------------------------------------- //
-// TODO(matheus): dynamic hashes creation
-uint32_t hash_words[] = {
-    0x00000003, 0x00000006, 0x00000004, 0x00000005, 0x00000003, 0x00000000,
-    0x00000000, 0x00000000, 0x00000000, 0x00000002, 0x00000000,
-};
 
 uint32_t eh_frame[] = {0x0, 0x0};
 
@@ -172,7 +166,7 @@ DynElf *dynElfInit(int fd) {
 
 int dynElfAddProbe(DynElf *dynElf, char *provider, char *probe) {
   dynElf->sdtNote = sdtNoteInit(provider, probe);
-  dynamicSymbolTableAdd(dynElf->dynamicSymbols, PROBE_SYMBOL);
+  dynamicSymbolTableAdd(dynElf->dynamicSymbols, probe);
 
   return 0;
 }
@@ -184,15 +178,18 @@ int dynElfSave(DynElf *dynElf) {
   void *sdtNoteData = calloc(sdtNoteSize(dynElf->sdtNote), 1);
   void *stringTableData = stringTableToBuffer(dynElf->stringTable),
        *dynamicStringData = stringTableToBuffer(dynElf->dynamicString);
+  uint32_t *hashTable;
+  size_t hashTableSize = hashTableFromSymbolTable(dynElf->dynamicSymbols, &hashTable);
+
 
   // ----------------------------------------------------------------------- //
   // Section: HASH
 
   dynElf->sections.hash->data->d_align = 8;
   dynElf->sections.hash->data->d_off = 0LL;
-  dynElf->sections.hash->data->d_buf = hash_words;
+  dynElf->sections.hash->data->d_buf = hashTable;
   dynElf->sections.hash->data->d_type = ELF_T_XWORD;
-  dynElf->sections.hash->data->d_size = sizeof(hash_words);
+  dynElf->sections.hash->data->d_size = hashTableSize;
   dynElf->sections.hash->data->d_version = EV_CURRENT;
 
   dynElf->sections.hash->shdr->sh_name = dynElf->sections.hash->string->index;
@@ -459,6 +456,7 @@ int dynElfSave(DynElf *dynElf) {
   free(sdtNoteData);
   free(stringTableData);
   free(dynamicStringData);
+  free(hashTable);
   return 0;
 }
 
