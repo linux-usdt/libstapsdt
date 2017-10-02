@@ -2,6 +2,7 @@
 #define _SDT_NOTE_H
 
 #include <libelf.h>
+#include "libstapsdt.h"
 
 #define NT_STAPSDT 3
 #define NT_STAPSDT_NAME "stapsdt"
@@ -24,7 +25,7 @@ typedef struct SDTNote_ {
 
 size_t sdtNoteSize(SDTNote *sdt);
 
-SDTNote *sdtNoteInit(char *provider, char *probe);
+SDTNote *sdtNoteInit(SDTProbe_t *probe);
 
 int sdtNoteToBuffer(SDTNote *sdt, char *buffer);
 
