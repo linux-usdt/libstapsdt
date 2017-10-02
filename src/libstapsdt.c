@@ -14,6 +14,7 @@
 #include "string-table.h"
 #include "shared-lib.h"
 #include "util.h"
+#include "libstapsdt.h"
 
 // ------------------------------------------------------------------------- //
 // TODO(mmarchini): dynamic strings creation
@@ -34,34 +35,78 @@ int createSharedLibrary(int fd, char *provider, char *probe) {
   return 0;
 }
 
-void *registerProbe(char *provider, char *probe) {
+SDTProvider_t *providerInit(char *name) {
+  SDTProvider_t *provider = (SDTProvider_t *) calloc(sizeof(SDTProvider_t), 1);
+  provider->probes = NULL;
+
+  provider->name = (char *) calloc(sizeof(char), strlen(name) + 1);
+  memcpy(provider->name, name, sizeof(char) * strlen(name) + 1);
+
+  return provider;
+}
+
+SDTProbe_t *providerAddProbe(SDTProvider_t *provider, char *name) {
+  SDTProbeList_t *probeList = (SDTProbeList_t *) calloc(sizeof(SDTProbeList_t), 1);
+  probeList->probe._fire = NULL;
+
+  probeList->probe.name = (char *) calloc(sizeof(char), strlen(name) + 1);
+  memcpy(probeList->probe.name, name, sizeof(char) * strlen(name) + 1);
+
+  probeList->next = provider->probes;
+  provider->probes = probeList;
+
+  return &(probeList->probe);
+}
+
+int providerLoad(SDTProvider_t *provider) {
+  // TODO (mmarchini) multiple probes, better code to handle that
+  SDTProbe_t *probe = &(provider->probes->probe);
+
   int fd;
   void *handle;
   void *fireProbe;
-  char filename[sizeof("/tmp/") + sizeof(provider) + sizeof(probe) +
+  char filename[sizeof("/tmp/") + sizeof(provider->name) + sizeof(probe->name) +
                 sizeof("XXXXXX") + 2];
   char *error;
 
-  sprintf(filename, "/tmp/%s-%s-XXXXXX", provider, probe);
+  sprintf(filename, "/tmp/%s-%s-XXXXXX", provider->name, probe->name);
 
   if ((fd = mkstemp(filename)) < 0) {
-    return NULL;
+    printf("Couldn't create '%s'\n", filename);
+    return -1;
   }
 
-  createSharedLibrary(fd, provider, probe);
+  createSharedLibrary(fd, provider->name, probe->name);
+  (void)close(fd);
+
   handle = dlopen(filename, RTLD_LAZY);
   if (!handle) {
     fputs(dlerror(), stderr);
-    return NULL;
+    return -1;
   }
 
-  fireProbe = dlsym(handle, PROBE_SYMBOL);
+  fireProbe = dlsym(handle, probe->name);
+  probe->_fire = fireProbe;
 
   if ((error = dlerror()) != NULL) {
     fputs(error, stderr);
-    return NULL;
+    return -1;
   }
 
-  (void)close(fd);
-  return fireProbe;
+  return 0;
+}
+
+void probeFire(SDTProbe_t *probe) {
+  ((void (*)())probe->_fire) ();
+}
+
+void providerDestroy(SDTProvider_t *provider) {
+  SDTProbeList_t *node=NULL, *next=NULL;
+  for(node=provider->probes; node!=NULL; node=next) {
+    free(node->probe.name);
+    next=node->next;
+    free(node);
+  }
+  free(provider->name);
+  free(provider);
 }
