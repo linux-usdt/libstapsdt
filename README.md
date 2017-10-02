@@ -55,7 +55,7 @@ make
 There's a demo program available. To build it, run:
 
 ```bash
-make demo  # Executable will be available at ./out/demo
+make demo  # Executable will be available at ./demo
 ```
 
 Usage:
