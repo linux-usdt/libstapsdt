@@ -129,7 +129,7 @@ int sdtNoteToBuffer(SDTNote *sdt, char *buffer) {
     memset(&(buffer[cur]), 0, sdtSize - cur);
   }
 
-  return 0;
+  return sdtSize;
 }
 
 void sdtNoteFree(SDTNote *sdtNote) {
@@ -139,4 +139,38 @@ void sdtNoteFree(SDTNote *sdtNote) {
   free(sdtNote->content.argFmt);
 
   free(sdtNote);
+}
+
+SDTNoteList_t *sdtNoteListAppend(SDTNoteList_t *list, SDTNote *note) {
+  SDTNoteList_t *newNode = calloc(sizeof(SDTNoteList_t), 1);
+  newNode->next = list;
+  newNode->note = note;
+
+  return newNode;
+}
+
+size_t sdtNoteListSize(SDTNoteList_t *list) {
+  size_t size = 0;
+  for(SDTNoteList_t *node=list; node!=NULL; node=node->next) {
+    size += sdtNoteSize(node->note);
+  }
+
+  return size;
+}
+
+size_t sdtNoteListToBuffer(SDTNoteList_t *list, char *buffer) {
+  size_t offset = 0;
+  for(SDTNoteList_t *node=list; node!=NULL; node=node->next) {
+    offset += sdtNoteToBuffer(node->note, &(buffer[offset]));
+  }
+  return offset;
+}
+
+void sdtNoteListFree(SDTNoteList_t *list) {
+  SDTNoteList_t *node, *next;
+  for(node=list; node!=NULL; node=next) {
+    sdtNoteFree(node->note);
+    next = node->next;
+    free(node);
+  }
 }

@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "shared-lib.h"
 #include "hash-table.h"
 
@@ -97,6 +98,7 @@ void *createDynSymData(DynamicSymbolTable *table) {
   for (i = 0; i < table->count; i++) {
     dynsyms[i + 2].st_name = current->symbol.string->index;
     dynsyms[i + 2].st_info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
+    current = current->next;
   }
   i -= 1;
 
@@ -130,6 +132,8 @@ void *createDynamicData() {
 
 DynElf *dynElfInit(int fd) {
   DynElf *dynElf = (DynElf *)calloc(sizeof(DynElf), 1);
+  dynElf->sdtNotes = NULL;
+  dynElf->sdtNotesCount = 0;
 
   if(createElfStringTables(dynElf) == -1) {
     // TODO (mmarchini) error message
@@ -165,22 +169,38 @@ DynElf *dynElfInit(int fd) {
 }
 
 int dynElfAddProbe(DynElf *dynElf, SDTProbe_t *probe) {
-  dynElf->sdtNote = sdtNoteInit(probe);
+  dynElf->sdtNotes = sdtNoteListAppend(dynElf->sdtNotes, sdtNoteInit(probe));
   dynamicSymbolTableAdd(dynElf->dynamicSymbols, probe->name);
+  dynElf->sdtNotesCount++;
 
   return 0;
+}
+
+size_t prepareTextData(DynElf *dynElf, char **textData) {
+  size_t funcSize = (unsigned long long)_funcEnd - (unsigned long long)_funcStart;
+  unsigned long long offset=0;
+  *textData = calloc(funcSize, dynElf->sdtNotesCount);
+
+  for(SDTNoteList_t *node=dynElf->sdtNotes; node!=NULL; node=node->next) {
+    node->note->textSectionOffset = offset;
+    memcpy(&((*textData)[offset]), _funcStart, funcSize);
+    offset += funcSize;
+  }
+
+  return offset;
 }
 
 // TODO (mmarchini) refactor (no idea how)
 int dynElfSave(DynElf *dynElf) {
   Elf64_Sym *dynSymData = createDynSymData(dynElf->dynamicSymbols);
   Elf64_Dyn *dynamicData = createDynamicData();
-  void *sdtNoteData = calloc(sdtNoteSize(dynElf->sdtNote), 1);
+  void *sdtNoteData = calloc(sdtNoteListSize(dynElf->sdtNotes), 1);
   void *stringTableData = stringTableToBuffer(dynElf->stringTable),
        *dynamicStringData = stringTableToBuffer(dynElf->dynamicString);
+  void *textData = NULL;
   uint32_t *hashTable;
   size_t hashTableSize = hashTableFromSymbolTable(dynElf->dynamicSymbols, &hashTable);
-
+  int i;
 
   // ----------------------------------------------------------------------- //
   // Section: HASH
@@ -235,10 +255,9 @@ int dynElfSave(DynElf *dynElf) {
 
   dynElf->sections.text->data->d_align = 16;
   dynElf->sections.text->data->d_off = 0LL;
-  dynElf->sections.text->data->d_buf = (void *)_funcStart;
+  dynElf->sections.text->data->d_size = prepareTextData(dynElf, (char **) &textData);
+  dynElf->sections.text->data->d_buf = textData;
   dynElf->sections.text->data->d_type = ELF_T_BYTE;
-  dynElf->sections.text->data->d_size =
-      (unsigned long)_funcEnd - (unsigned long)_funcStart;
   dynElf->sections.text->data->d_version = EV_CURRENT;
 
   dynElf->sections.text->shdr->sh_name = dynElf->sections.text->string->index;
@@ -295,7 +314,7 @@ int dynElfSave(DynElf *dynElf) {
   dynElf->sections.sdtNote->data->d_off = 0LL;
   dynElf->sections.sdtNote->data->d_buf = sdtNoteData;
   dynElf->sections.sdtNote->data->d_type = ELF_T_NHDR;
-  dynElf->sections.sdtNote->data->d_size = sdtNoteSize(dynElf->sdtNote);
+  dynElf->sections.sdtNote->data->d_size = sdtNoteListSize(dynElf->sdtNotes);
   dynElf->sections.sdtNote->data->d_version = EV_CURRENT;
 
   dynElf->sections.sdtNote->shdr->sh_name = dynElf->sections.sdtNote->string->index;
@@ -362,9 +381,12 @@ int dynElfSave(DynElf *dynElf) {
 
   dynElf->sections.sdtNote->shdr->sh_addr = dynElf->sections.sdtNote->shdr->sh_offset;
   dynElf->sections.sdtNote->offset = dynElf->sections.sdtNote->shdr->sh_offset;
-  dynElf->sdtNote->content.probePC = dynElf->sections.text->offset;
-  dynElf->sdtNote->content.base_addr = dynElf->sections.sdtBase->offset;
-  sdtNoteToBuffer(dynElf->sdtNote, sdtNoteData);
+
+  for(SDTNoteList_t *node=dynElf->sdtNotes; node != NULL; node = node->next) {
+    node->note->content.probePC = dynElf->sections.text->offset + node->note->textSectionOffset;
+    node->note->content.base_addr = dynElf->sections.sdtBase->offset;
+  }
+  sdtNoteListToBuffer(dynElf->sdtNotes, sdtNoteData);
 
   // -- //
 
@@ -422,17 +444,23 @@ int dynElfSave(DynElf *dynElf) {
   dynSymData[1].st_value = dynElf->sections.text->offset;
   dynSymData[1].st_shndx = elf_ndxscn(dynElf->sections.text->scn);
 
-  dynSymData[2].st_value = dynElf->sections.text->offset;
-  dynSymData[2].st_shndx = elf_ndxscn(dynElf->sections.text->scn);
 
-  dynSymData[3].st_value = PHDR_ALIGN + dynElf->sections.shStrTab->offset;
-  dynSymData[3].st_shndx = elf_ndxscn(dynElf->sections.dynamic->scn);
+  i=0;
+  for (SDTNoteList_t *node = dynElf->sdtNotes; node != NULL; node = node->next) {
+    dynSymData[i + 2].st_value = dynElf->sections.text->offset + node->note->textSectionOffset;
+    dynSymData[i + 2].st_shndx = elf_ndxscn(dynElf->sections.text->scn);
+    i++;
+  }
+  i -= 1;
 
-  dynSymData[4].st_value = PHDR_ALIGN + dynElf->sections.shStrTab->offset;
-  dynSymData[4].st_shndx = elf_ndxscn(dynElf->sections.dynamic->scn);
+  dynSymData[i + 3].st_value = PHDR_ALIGN + dynElf->sections.shStrTab->offset;
+  dynSymData[i + 3].st_shndx = elf_ndxscn(dynElf->sections.dynamic->scn);
 
-  dynSymData[5].st_value = PHDR_ALIGN + dynElf->sections.shStrTab->offset;
-  dynSymData[5].st_shndx = elf_ndxscn(dynElf->sections.dynamic->scn);
+  dynSymData[i + 4].st_value = PHDR_ALIGN + dynElf->sections.shStrTab->offset;
+  dynSymData[i + 4].st_shndx = elf_ndxscn(dynElf->sections.dynamic->scn);
+
+  dynSymData[i + 5].st_value = PHDR_ALIGN + dynElf->sections.shStrTab->offset;
+  dynSymData[i + 5].st_shndx = elf_ndxscn(dynElf->sections.dynamic->scn);
 
   // Fix offsets Dynamic
   // ----------------------------------------------------------------------- //
@@ -451,6 +479,7 @@ int dynElfSave(DynElf *dynElf) {
     return -1;
   }
 
+  free(textData);
   free(dynSymData);
   free(dynamicData);
   free(sdtNoteData);
@@ -512,8 +541,8 @@ void dynElfClose(DynElf *dynElf) {
     dynamicSymbolTableFree(dynElf->dynamicSymbols);
   }
 
-  if(dynElf->sdtNote != NULL) {
-    sdtNoteFree(dynElf->sdtNote);
+  if(dynElf->sdtNotes != NULL) {
+    sdtNoteListFree(dynElf->sdtNotes);
   }
 
   dynElfSectionsClose(&dynElf->sections);

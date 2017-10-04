@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "dynamic-symbols.h"
 
 #define possibleBucketSizesCount 17
@@ -33,7 +34,7 @@ size_t hashTableFromSymbolTable(DynamicSymbolTable *table, uint32_t **hashTable)
   for(current=table->symbols; current!=NULL; current=current->next) {
     idx = elf_hash(current->symbol.string->str) % nBuckets;
     hashTable_[2 + idx] = chainIdx;
-    hashTable_[2 + nBuckets + 1] = chainIdx + 1;
+    hashTable_[2 + nBuckets + chainIdx] = chainIdx + 1;
     chainIdx++;
   }
 
