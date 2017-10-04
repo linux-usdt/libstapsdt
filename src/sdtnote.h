@@ -21,14 +21,26 @@ typedef struct SDTNote_ {
     char *probe;    //
     char *argFmt;   // \0
   } content;
+  unsigned long long textSectionOffset;
 } SDTNote;
+
+typedef struct SDTNoteList_ {
+  SDTNote *note;
+  struct SDTNoteList_ *next;
+} SDTNoteList_t;
 
 size_t sdtNoteSize(SDTNote *sdt);
 
 SDTNote *sdtNoteInit(SDTProbe_t *probe);
 
-int sdtNoteToBuffer(SDTNote *sdt, char *buffer);
-
 void sdtNoteFree(SDTNote *sdtNote);
+
+SDTNoteList_t *sdtNoteListAppend(SDTNoteList_t *list, SDTNote *note);
+
+size_t sdtNoteListSize(SDTNoteList_t *list);
+
+size_t sdtNoteListToBuffer(SDTNoteList_t *list, char *buffer);
+
+void sdtNoteListFree(SDTNoteList_t *list);
 
 #endif

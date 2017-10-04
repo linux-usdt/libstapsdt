@@ -35,10 +35,10 @@ clear:
 	rm -rf out/*
 
 lint:
-	clang-tidy src/*.h src/*.c
+	clang-tidy src/*.h src/*.c -- -Isrc/
 
 format:
-	clang-tidy src/*.h src/*.c -fix
+	clang-tidy src/*.h src/*.c -fix -- -Isrc/
 
 docs:
 	make -C ./docs/ html
