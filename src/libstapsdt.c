@@ -99,13 +99,16 @@ int providerLoad(SDTProvider_t *provider) {
 
   for(SDTProbeList_t *node=provider->probes; node != NULL; node = node->next) {
     fireProbe = dlsym(handle, node->probe.name);
+
+    // FIXME (mmarchini) handle errors better here
+    if ((error = dlerror()) != NULL) {
+      fputs(error, stderr);
+      return -1;
+    }
+
     node->probe._fire = fireProbe;
   }
 
-  if ((error = dlerror()) != NULL) {
-    fputs(error, stderr);
-    return -1;
-  }
 
   return 0;
 }

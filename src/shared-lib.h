@@ -29,7 +29,8 @@ typedef struct {
 
   DynamicSymbolTable *dynamicSymbols;
 
-  SDTNote *sdtNote;
+  SDTNoteList_t *sdtNotes;
+  size_t sdtNotesCount;
 
   SectionsList sections;
 } DynElf;
