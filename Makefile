@@ -40,4 +40,10 @@ lint:
 format:
 	clang-tidy src/*.h src/*.c -fix
 
-.PHONY: all clear lint format build-tests
+docs:
+	make -C ./docs/ html
+
+docs-server:
+	cd docs/_build/html; python3 -m http.server;
+
+.PHONY: all clear lint format build-tests docs
