@@ -3,10 +3,23 @@ CC=gcc
 CFLAGS= -std=gnu11
 LDFLAGS=-lelf -ldl
 
+PREFIX=/usr
+
 OBJECTS = $(patsubst src/%.c, build/lib/%.o, $(wildcard src/*.c))
 HEADERS = $(wildcard src/*.h)
 
 all: out/libstapsdt.a out/libstapsdt.so
+
+install:
+	mkdir -p $(DESTDIR)$(PREFIX)/lib
+	mkdir -p $(DESTDIR)$(PREFIX)/include
+	cp out/libstapsdt.so $(DESTDIR)$(PREFIX)/lib/libstapsdt.so
+	cp src/libstapsdt.h $(DESTDIR)$(PREFIX)/include/
+	ldconfig -n $(DESTDIR)$(PREFIX)/lib/
+
+uninstall:
+	rm -f $(DESTDIR)$(PREFIX)/lib/libstapsdt.a
+	rm -f $(DESTDIR)$(PREFIX)/include/libstapsdt.h
 
 build/lib/libstapsdt-x86_64.o: src/asm/libstapsdt-x86_64.s
 	mkdir -p build
@@ -22,7 +35,7 @@ out/libstapsdt.a: $(OBJECTS) build/lib/libstapsdt-x86_64.o
 
 out/libstapsdt.so: $(OBJECTS) build/lib/libstapsdt-x86_64.o
 	mkdir -p out
-	$(CC) $(CFLAGS) -shared -o $@ $^
+	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
 
 demo: all example/demo.c
 	$(CC) $(CFLAGS) example/demo.c out/libstapsdt.a -o demo -Isrc/ $(LDFLAGS)
@@ -46,4 +59,4 @@ docs:
 docs-server:
 	cd docs/_build/html; python3 -m http.server;
 
-.PHONY: all clear lint format build-tests docs
+.PHONY: all clear lint format build-tests docs install uninstall

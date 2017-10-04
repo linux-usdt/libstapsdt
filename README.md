@@ -34,7 +34,6 @@ will keep working as expected.
 `libstapsdt` currently requires the following dependencies:
 
 * libelf (from elfutils)
-* NASM (Assembly compiler)
 
 ### Ubuntu 16.04
 
@@ -42,12 +41,13 @@ will keep working as expected.
 sudo apt install libelf1 libelf-dev nasm
 ```
 
-## Build
+## Install
 
 To build libstapsdt, just run:
 
 ```bash
 make
+sudo make install
 ```
 
 ## Demo

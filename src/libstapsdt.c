@@ -33,7 +33,7 @@ int createSharedLibrary(int fd, SDTProvider_t *provider) {
   return 0;
 }
 
-SDTProvider_t *providerInit(char *name) {
+SDTProvider_t *providerInit(const char *name) {
   SDTProvider_t *provider = (SDTProvider_t *) calloc(sizeof(SDTProvider_t), 1);
   provider->probes = NULL;
 
@@ -43,7 +43,7 @@ SDTProvider_t *providerInit(char *name) {
   return provider;
 }
 
-SDTProbe_t *providerAddProbe(SDTProvider_t *provider, char *name, int argCount, ...) {
+SDTProbe_t *providerAddProbe(SDTProvider_t *provider, const char *name, int argCount, ...) {
   int i;
   va_list vl;
   ArgType_t arg;

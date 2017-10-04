@@ -35,9 +35,9 @@ typedef struct SDTProvider {
   SDTProbeList_t *probes;
 } SDTProvider_t;
 
-SDTProvider_t *providerInit(char *name);
+SDTProvider_t *providerInit(const char *name);
 
-SDTProbe_t *providerAddProbe(SDTProvider_t *provider, char *name, int argCount, ...);
+SDTProbe_t *providerAddProbe(SDTProvider_t *provider, const char *name, int argCount, ...);
 
 int providerLoad(SDTProvider_t *provider);
 
