@@ -149,6 +149,13 @@ void probeFire(SDTProbe_t *probe, ...) {
   }
 }
 
+int probeIsEnabled(SDTProbe_t *probe) {
+  if(((*(char *)probe->_fire) & 0x90) == 0x90) {
+    return 0;
+  }
+  return 1;
+}
+
 void providerDestroy(SDTProvider_t *provider) {
   SDTProbeList_t *node=NULL, *next=NULL;
   for(node=provider->probes; node!=NULL; node=next) {
