@@ -45,4 +45,6 @@ void providerDestroy(SDTProvider_t *provider);
 
 void probeFire(SDTProbe_t *probe, ...);
 
+int probeIsEnabled(SDTProbe_t *probe);
+
 #endif
