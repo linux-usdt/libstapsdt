@@ -6,6 +6,9 @@
 
 _funcStart:
   nop
+  nop
+  nop
+  nop
   ret
 _funcEnd:
   nop
