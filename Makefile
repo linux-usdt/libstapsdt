@@ -18,7 +18,7 @@ install:
 	ldconfig -n $(DESTDIR)$(PREFIX)/lib/
 
 uninstall:
-	rm -f $(DESTDIR)$(PREFIX)/lib/libstapsdt.a
+	rm -f $(DESTDIR)$(PREFIX)/lib/libstapsdt.so
 	rm -f $(DESTDIR)$(PREFIX)/include/libstapsdt.h
 
 build/lib/libstapsdt-x86_64.o: src/asm/libstapsdt-x86_64.s
