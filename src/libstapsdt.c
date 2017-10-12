@@ -36,6 +36,7 @@ int createSharedLibrary(int fd, SDTProvider_t *provider) {
 SDTProvider_t *providerInit(const char *name) {
   SDTProvider_t *provider = (SDTProvider_t *) calloc(sizeof(SDTProvider_t), 1);
   provider->probes = NULL;
+  provider->_handle = NULL;
 
   provider->name = (char *) calloc(sizeof(char), strlen(name) + 1);
   memcpy(provider->name, name, sizeof(char) * strlen(name) + 1);
@@ -76,7 +77,6 @@ SDTProbe_t *providerAddProbe(SDTProvider_t *provider, const char *name, int argC
 
 int providerLoad(SDTProvider_t *provider) {
   int fd;
-  void *handle;
   void *fireProbe;
   char filename[sizeof("/tmp/") + sizeof(provider->name) + sizeof("XXXXXX") + 1];
   char *error;
@@ -91,14 +91,14 @@ int providerLoad(SDTProvider_t *provider) {
   createSharedLibrary(fd, provider);
   (void)close(fd);
 
-  handle = dlopen(filename, RTLD_LAZY);
-  if (!handle) {
+  provider->_handle = dlopen(filename, RTLD_LAZY);
+  if (!provider->_handle) {
     fputs(dlerror(), stderr);
     return -1;
   }
 
   for(SDTProbeList_t *node=provider->probes; node != NULL; node = node->next) {
-    fireProbe = dlsym(handle, node->probe.name);
+    fireProbe = dlsym(provider->_handle, node->probe.name);
 
     // FIXME (mmarchini) handle errors better here
     if ((error = dlerror()) != NULL) {
@@ -113,7 +113,24 @@ int providerLoad(SDTProvider_t *provider) {
   return 0;
 }
 
+int providerUnload(SDTProvider_t *provider) {
+  if(dlclose(provider->_handle) != 0) {
+    fputs(dlerror(), stderr);
+    return -1;
+  }
+  provider->_handle = NULL;
+
+  for(SDTProbeList_t *node=provider->probes; node != NULL; node = node->next) {
+    node->probe._fire = NULL;
+  }
+
+  return 0;
+}
+
 void probeFire(SDTProbe_t *probe, ...) {
+  if(probe->_fire == NULL) {
+    return;
+  }
   va_list vl;
   va_start(vl, probe);
   uint64_t arg[6] = {0};
