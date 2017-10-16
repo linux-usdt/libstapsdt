@@ -114,6 +114,9 @@ int providerLoad(SDTProvider_t *provider) {
 }
 
 int providerUnload(SDTProvider_t *provider) {
+  if(provider->_handle == NULL) {
+    return 0;
+  }
   if(dlclose(provider->_handle) != 0) {
     fputs(dlerror(), stderr);
     return -1;
@@ -167,6 +170,9 @@ void probeFire(SDTProbe_t *probe, ...) {
 }
 
 int probeIsEnabled(SDTProbe_t *probe) {
+  if(probe->_fire == NULL) {
+    return 0;
+  }
   if(((*(char *)probe->_fire) & 0x90) == 0x90) {
     return 0;
   }
