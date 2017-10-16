@@ -43,11 +43,12 @@ sudo apt install libelf1 libelf-dev nasm
 
 ## Install
 
-To build libstapsdt, just run:
+To build and install libstapsdt, just run:
 
 ```bash
 make
 sudo make install
+sudo ldconfig
 ```
 
 ## Demo
