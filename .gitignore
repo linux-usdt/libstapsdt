@@ -53,6 +53,7 @@ dkms.conf
 
 out/
 build/
+dist/
 core
 
 demo
