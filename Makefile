@@ -2,23 +2,28 @@
 CC=gcc
 CFLAGS= -std=gnu11
 LDFLAGS=-lelf -ldl
+VERSION=0.1.0
 
 PREFIX=/usr
 
 OBJECTS = $(patsubst src/%.c, build/lib/%.o, $(wildcard src/*.c))
 HEADERS = $(wildcard src/*.h)
 
-all: out/libstapsdt.a out/libstapsdt.so
+SOLINK = libstapsdt.so
+SONAME = libstapsdt.so.0
+
+all: out/libstapsdt.a out/$(SONAME)
 
 install:
 	mkdir -p $(DESTDIR)$(PREFIX)/lib
 	mkdir -p $(DESTDIR)$(PREFIX)/include
-	cp out/libstapsdt.so $(DESTDIR)$(PREFIX)/lib/libstapsdt.so
+	cp out/$(SONAME) $(DESTDIR)$(PREFIX)/lib/$(SONAME)
 	cp src/libstapsdt.h $(DESTDIR)$(PREFIX)/include/
-	ldconfig -n $(DESTDIR)$(PREFIX)/lib/
+	ln -s $(DESTDIR)$(PREFIX)/lib/$(SONAME) $(DESTDIR)$(PREFIX)/lib/$(SOLINK)
 
 uninstall:
-	rm -f $(DESTDIR)$(PREFIX)/lib/libstapsdt.so
+	rm -f $(DESTDIR)$(PREFIX)/lib/$(SONAME)
+	rm -f $(DESTDIR)$(PREFIX)/lib/$(SOLINK)
 	rm -f $(DESTDIR)$(PREFIX)/include/libstapsdt.h
 
 build/lib/libstapsdt-x86_64.o: src/asm/libstapsdt-x86_64.s
@@ -33,9 +38,9 @@ out/libstapsdt.a: $(OBJECTS) build/lib/libstapsdt-x86_64.o
 	mkdir -p out
 	ar rcs $@ $^
 
-out/libstapsdt.so: $(OBJECTS) build/lib/libstapsdt-x86_64.o
+out/$(SONAME): $(OBJECTS) build/lib/libstapsdt-x86_64.o
 	mkdir -p out
-	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -shared -Wl,-soname=$(SONAME) -o $@ $^ $(LDFLAGS)
 
 demo: all example/demo.c
 	$(CC) $(CFLAGS) example/demo.c out/libstapsdt.a -o demo -Isrc/ $(LDFLAGS)
@@ -43,9 +48,10 @@ demo: all example/demo.c
 test: all
 	make -C ./tests/
 
-clear:
+clean:
 	rm -rf build/*
 	rm -rf out/*
+	make clean -C ./tests/
 
 lint:
 	clang-tidy src/*.h src/*.c -- -Isrc/
@@ -59,4 +65,12 @@ docs:
 docs-server:
 	cd docs/_build/html; python3 -m http.server;
 
-.PHONY: all clear lint format build-tests docs install uninstall
+deb-pkg-setup:
+	mkdir -p dist/libstapsdt-$(VERSION)/;
+	git archive HEAD | gzip > dist/libstapsdt-$(VERSION).tar.gz;
+	tar xvzf dist/libstapsdt-$(VERSION).tar.gz -C dist/libstapsdt-$(VERSION)/;
+	cd dist/libstapsdt-$(VERSION); dh_make -l -c mit -y -f ../libstapsdt-$(VERSION).tar.gz;
+	rm -rf dist/libstapsdt-$(VERSION)/debian/*.ex  dist/libstapsdt-$(VERSION)/debian/*.EX  dist/libstapsdt-$(VERSION)/debian/README.*
+
+
+.PHONY: all clear lint format build-tests docs install uninstall deb-pkg-setup
