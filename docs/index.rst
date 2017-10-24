@@ -30,6 +30,6 @@ Table of Contents
   :maxdepth: 1
 
   getting-started/getting-started
-  internals/how-it-works
+  how-it-works/index
   wrappers/wrappers
   api/api
