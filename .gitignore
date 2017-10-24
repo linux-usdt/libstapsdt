@@ -60,3 +60,5 @@ demo
 test-memory-leaks
 
 docs/_build/
+.env/
+.venv/
