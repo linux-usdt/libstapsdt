@@ -2,10 +2,11 @@
 
 [![Stability](https://img.shields.io/badge/version-unstable-lightgrey.svg?style=flat-square)](https://github.com/sthima/libstapsdt)
 [![Build Status](https://img.shields.io/travis/sthima/libstapsdt/master.svg?style=flat-square)](https://travis-ci.org/sthima/libstapsdt)
+[![Read the Docs](https://img.shields.io/readthedocs/libstapsdt.svg?style=flat-square)](https://readthedocs.org/projects/libstapsdt/)
 
 `libstapsdt` is a library which allows creating and firing Systemtap's USDT
 probes at runtime. It's inspired on
-[chrisa/libusdt](https://github.com/chrisa/libusdt/). The main goal of this
+[chrisa/libusdt](https://github.com/chrisa/libusdt/). The goal of this
 library is to add USDT probes functionality to dynamic languages.
 
 ## Table of Contents
@@ -16,18 +17,20 @@ library is to add USDT probes functionality to dynamic languages.
 - [How it works](#how-it-works)
 - [Dependencies](#dependencies)
 	- [Ubuntu 16.04](#ubuntu-1604)
-- [Build](#build)
+- [Install](#install)
 - [Demo](#demo)
+- [Run tests](#run-tests)
+- [Write your own wrapper](#write-your-own-wrapper)
 
 <!-- /TOC -->
 
 ## How it works
 
-Systemtap's USDT implementation allows only statically defined probes, because
-they are defined as ELF notes by the compiler. In order to create probes at
-runtime, `libstapsdt` takes advantage of shared libraries: it creates a small
-library with an ELF note and links it at runtime. This way, most existing tools
-will keep working as expected.
+Systemtap's USDT implementation allows only statically defined probes because
+they are set as ELF notes by the compiler. To create probes at runtime,
+`libstapsdt` takes advantage of shared libraries: it creates a small library
+with an ELF note and links it at runtime. This way, most existing tools will
+keep working as expected.
 
 ## Dependencies
 
@@ -38,7 +41,7 @@ will keep working as expected.
 ### Ubuntu 16.04
 
 ```bash
-sudo apt install libelf1 libelf-dev nasm
+sudo apt install libelf1 libelf-dev
 ```
 
 ## Install
@@ -82,3 +85,17 @@ a few tests for now, but more will be added in the future.
 ```bash
 make test
 ```
+
+# Wrappers
+
+Here is a list of wrappers for other languages:
+
+  * [Python](https://pypi.org/project/stapsdt/)
+  * [NodeJS](https://www.npmjs.com/package/usdt)
+
+## Write your own wrapper
+
+`libstapsdt` is written in C, which makes it very portable to almost any
+language. Most dynamic languages provide a way to wrap C code. Feel free to
+develop a wrapper in your language of choice. If you do, please let us know to
+update our wrappers list!
