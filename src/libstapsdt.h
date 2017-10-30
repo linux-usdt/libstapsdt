@@ -34,6 +34,7 @@ typedef struct SDTProvider {
   char *name;
   SDTProbeList_t *probes;
   void *_handle;
+  char *_filename;
 } SDTProvider_t;
 
 SDTProvider_t *providerInit(const char *name);
