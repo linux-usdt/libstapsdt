@@ -37,6 +37,7 @@ SDTProvider_t *providerInit(const char *name) {
   SDTProvider_t *provider = (SDTProvider_t *) calloc(sizeof(SDTProvider_t), 1);
   provider->probes = NULL;
   provider->_handle = NULL;
+  provider->_filename = NULL;
 
   provider->name = (char *) calloc(sizeof(char), strlen(name) + 1);
   memcpy(provider->name, name, sizeof(char) * strlen(name) + 1);
@@ -78,15 +79,17 @@ SDTProbe_t *providerAddProbe(SDTProvider_t *provider, const char *name, int argC
 int providerLoad(SDTProvider_t *provider) {
   int fd;
   void *fireProbe;
-  char filename[sizeof("/tmp/") + sizeof(provider->name) + sizeof("XXXXXX") + 1];
+  char *filename = calloc(sizeof(char), strlen("/tmp/-XXXXXX.so") + strlen(provider->name) + 1);
   char *error;
 
-  sprintf(filename, "/tmp/%s-XXXXXX", provider->name);
+  sprintf(filename, "/tmp/%s-XXXXXX.so", provider->name);
 
-  if ((fd = mkstemp(filename)) < 0) {
+  if ((fd = mkstemps(filename, 3)) < 0) {
     printf("Couldn't create '%s'\n", filename);
+    free(filename);
     return -1;
   }
+  provider->_filename = filename;
 
   createSharedLibrary(fd, provider);
   (void)close(fd);
@@ -126,6 +129,9 @@ int providerUnload(SDTProvider_t *provider) {
   for(SDTProbeList_t *node=provider->probes; node != NULL; node = node->next) {
     node->probe._fire = NULL;
   }
+
+  unlink(provider->_filename);
+  free(provider->_filename);
 
   return 0;
 }
@@ -181,6 +187,10 @@ int probeIsEnabled(SDTProbe_t *probe) {
 
 void providerDestroy(SDTProvider_t *provider) {
   SDTProbeList_t *node=NULL, *next=NULL;
+  if(provider->_handle != NULL) {
+    providerUnload(provider);
+  }
+
   for(node=provider->probes; node!=NULL; node=next) {
     free(node->probe.name);
     next=node->next;
