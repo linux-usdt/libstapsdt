@@ -24,7 +24,7 @@ int main( int argc, char *argv[] ) {
   }
 
   if(providerLoad(provider) == -1) {
-    printf("Something went wrong...\n");
+    printf("Something went wrong: %s\n", provider->error);
     return -1;
   }
 

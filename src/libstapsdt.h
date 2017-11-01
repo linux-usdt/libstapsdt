@@ -3,6 +3,15 @@
 #define MAX_ARGUMENTS 6
 
 typedef enum {
+  noError                 = -1,
+  elfCreationError        = 0,
+  tmpCreationError        = 1,
+  sharedLibraryOpenError  = 2,
+  symbolLoadingError      = 3,
+  sharedLibraryCloseError = 4,
+} SDTError_t;
+
+typedef enum {
   noarg = 0,
   uint8 = 1,
   int8 = -1,
@@ -13,7 +22,6 @@ typedef enum {
   uint64 = 8,
   int64 = -8,
 } ArgType_t;
-
 
 struct SDTProvider;
 
@@ -33,6 +41,10 @@ typedef struct SDTProbeList_ {
 typedef struct SDTProvider {
   char *name;
   SDTProbeList_t *probes;
+  SDTError_t errno;
+  char *error;
+
+  // private
   void *_handle;
   char *_filename;
 } SDTProvider_t;

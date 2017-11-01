@@ -16,6 +16,14 @@ Types
 
     Linked-list of registered probes
 
+  .. c:member::  SDTError_t errno
+
+    Error code of the last error for this provider
+
+  .. c:member::  char *error
+
+    Error string of the last error for this provider
+
 .. c:type:: struct SDTProbe_t
 
   Represents a USDT Probe. A probe is basically a software breakpoint.
@@ -76,6 +84,40 @@ Types
   .. c:member:: int64
 
     64 bits signed int
+
+.. c:type:: enum SDTError_t
+
+  Represents all errors thrown by libstapsdt.
+
+  .. c:member:: noError
+
+    This error code means that no error occured so far
+
+  .. c:member:: elfCreationError
+
+    This error code means that we were unable to create an Elf file to store
+    our probes
+
+  .. c:member:: tmpCreationError
+
+    This error code means that we were unable to open a temporary file at
+    ``/tmp/``. A common mistake here is having a ``/`` in the provider name,
+    which will be interpreted by the operating system as a folder.
+
+  .. c:member:: sharedLibraryOpenError
+
+    This error code means that we were unable to open the shared library that we
+    just created
+
+  .. c:member:: symbolLoadingError
+
+    This error code means that the we were unable to load a symbol from the
+    shared library we just created
+
+  .. c:member:: sharedLibraryCloseError
+
+    This error code means that we were unable to close the shared library for
+    this provider
 
 
 .. c:type:: struct SDTProbeList_t
