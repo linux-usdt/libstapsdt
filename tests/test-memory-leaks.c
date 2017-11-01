@@ -18,6 +18,7 @@ int main( int argc, char *argv[] ) {
   probeFire(probe1, 1, 2, 3, 4);
   probeFire(probe2, -3, 8);
 
+  providerUnload(provider);
   providerDestroy(provider);
 
   return 0;

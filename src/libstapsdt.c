@@ -16,6 +16,7 @@
 #include "shared-lib.h"
 #include "util.h"
 #include "libstapsdt.h"
+#include "errors.h"
 
 int createSharedLibrary(int fd, SDTProvider_t *provider) {
   DynElf *dynElf = dynElfInit(fd);
@@ -25,6 +26,7 @@ int createSharedLibrary(int fd, SDTProvider_t *provider) {
   }
 
   if(dynElfSave(dynElf) == -1) {
+    sdtSetError(provider, elfCreationError, provider->name);
     return -1;
   }
 
@@ -35,8 +37,10 @@ int createSharedLibrary(int fd, SDTProvider_t *provider) {
 
 SDTProvider_t *providerInit(const char *name) {
   SDTProvider_t *provider = (SDTProvider_t *) calloc(sizeof(SDTProvider_t), 1);
-  provider->probes = NULL;
-  provider->_handle = NULL;
+  provider->error     = NULL;
+  provider->errno     = noError;
+  provider->probes    = NULL;
+  provider->_handle   = NULL;
   provider->_filename = NULL;
 
   provider->name = (char *) calloc(sizeof(char), strlen(name) + 1);
@@ -85,27 +89,30 @@ int providerLoad(SDTProvider_t *provider) {
   sprintf(filename, "/tmp/%s-XXXXXX.so", provider->name);
 
   if ((fd = mkstemps(filename, 3)) < 0) {
-    printf("Couldn't create '%s'\n", filename);
+    sdtSetError(provider, tmpCreationError, filename);
     free(filename);
     return -1;
   }
   provider->_filename = filename;
 
-  createSharedLibrary(fd, provider);
+  if(createSharedLibrary(fd, provider) != 0) {
+    (void)close(fd);
+    return -1;
+  }
   (void)close(fd);
 
   provider->_handle = dlopen(filename, RTLD_LAZY);
   if (!provider->_handle) {
-    fputs(dlerror(), stderr);
+    sdtSetError(provider, sharedLibraryOpenError, filename, dlerror());
     return -1;
   }
 
   for(SDTProbeList_t *node=provider->probes; node != NULL; node = node->next) {
     fireProbe = dlsym(provider->_handle, node->probe.name);
 
-    // FIXME (mmarchini) handle errors better here
+    // TODO (mmarchini) handle errors better when a symbol fails to load
     if ((error = dlerror()) != NULL) {
-      fputs(error, stderr);
+      sdtSetError(provider, sharedLibraryOpenError, filename, node->probe.name, error);
       return -1;
     }
 
@@ -121,7 +128,7 @@ int providerUnload(SDTProvider_t *provider) {
     return 0;
   }
   if(dlclose(provider->_handle) != 0) {
-    fputs(dlerror(), stderr);
+    sdtSetError(provider, sharedLibraryCloseError, provider->_filename, provider->name, dlerror());
     return -1;
   }
   provider->_handle = NULL;
@@ -187,9 +194,6 @@ int probeIsEnabled(SDTProbe_t *probe) {
 
 void providerDestroy(SDTProvider_t *provider) {
   SDTProbeList_t *node=NULL, *next=NULL;
-  if(provider->_handle != NULL) {
-    providerUnload(provider);
-  }
 
   for(node=provider->probes; node!=NULL; node=next) {
     free(node->probe.name);
@@ -197,5 +201,8 @@ void providerDestroy(SDTProvider_t *provider) {
     free(node);
   }
   free(provider->name);
+  if(provider->error != NULL) {
+    free(provider->error);
+  }
   free(provider);
 }
