@@ -25,7 +25,7 @@ typedef enum {
 
 struct SDTProvider;
 
-typedef struct  {
+typedef struct SDTProbe {
   char *name;
   ArgType_t argFmt[MAX_ARGUMENTS];
   void *_fire;
