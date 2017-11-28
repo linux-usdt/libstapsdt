@@ -22,7 +22,7 @@ typedef struct {
 typedef struct {
   Elf *elf;
   Elf64_Ehdr *ehdr;
-  Elf64_Phdr *phdrLoad1, *phdrLoad2, *phdrDyn;
+  Elf64_Phdr *phdrLoad1, *phdrLoad2, *phdrDyn, *phdrStack;
 
   StringTable *stringTable;
   StringTable *dynamicString;
