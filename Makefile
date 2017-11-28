@@ -1,7 +1,7 @@
 
 CC=gcc
 CFLAGS= -std=gnu11
-LDFLAGS=-lelf -ldl
+LDFLAGS=-lelf -ldl -Wl,-z,noexecstack
 VERSION=0.1.0
 
 PREFIX=/usr
