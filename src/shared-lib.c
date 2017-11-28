@@ -50,7 +50,7 @@ Elf64_Ehdr *createElfHeader(Elf *elf) {
 }
 
 int createElfProgramHeaders(DynElf *dynElf) {
-  if ((dynElf->phdrLoad1 = elf64_newphdr(dynElf->elf, 3)) == NULL) {
+  if ((dynElf->phdrLoad1 = elf64_newphdr(dynElf->elf, 4)) == NULL) {
     // TODO (mmarchini) error message
     // FIXME (mmarchini) properly free everything
     return -1;
@@ -58,6 +58,7 @@ int createElfProgramHeaders(DynElf *dynElf) {
 
   dynElf->phdrDyn = &dynElf->phdrLoad1[2];
   dynElf->phdrLoad2 = &dynElf->phdrLoad1[1];
+  dynElf->phdrStack = &dynElf->phdrLoad1[3];
 
   return 0;
 }
@@ -435,6 +436,16 @@ int dynElfSave(DynElf *dynElf) {
   dynElf->phdrDyn->p_filesz = dynElf->sections.dynamic->data->d_size;
   dynElf->phdrDyn->p_memsz = dynElf->sections.dynamic->data->d_size;
   dynElf->phdrDyn->p_align = 0x8; // XXX magic number?
+
+  // GNU_STACK PHDR
+  dynElf->phdrStack->p_type = PT_GNU_STACK;
+  dynElf->phdrStack->p_flags = PF_W + PF_R;
+  dynElf->phdrStack->p_offset = 0;
+  dynElf->phdrStack->p_vaddr = 0;
+  dynElf->phdrStack->p_paddr = 0;
+  dynElf->phdrStack->p_filesz = 0;
+  dynElf->phdrStack->p_memsz = 0;
+  dynElf->phdrStack->p_align = 0x10;
 
   // Fix offsets DynSym
   // ----------------------------------------------------------------------- //
