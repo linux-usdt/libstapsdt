@@ -6,6 +6,7 @@ Here is a list of wrappers for other languages:
 
   * `Python <https://pypi.org/project/stapsdt/>`_
   * `NodeJS <https://www.npmjs.com/package/usdt>`_
+  * `Go <https://github.com/mmcshane/salp>`_
 
 Write your own wrapper
 ======================
