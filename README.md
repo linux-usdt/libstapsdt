@@ -92,6 +92,7 @@ Here is a list of wrappers for other languages:
 
   * [Python](https://pypi.org/project/stapsdt/)
   * [NodeJS](https://www.npmjs.com/package/usdt)
+  * [Go](https://github.com/mmcshane/salp)
 
 ## Write your own wrapper
 
