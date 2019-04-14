@@ -1,6 +1,6 @@
 
 CC=gcc
-CFLAGS= -std=gnu11
+CFLAGS= -std=gnu11 $(CFLAGS_EXTRA)
 LDFLAGS=-lelf -ldl -Wl,-z,noexecstack
 VERSION=0.1.0
 
