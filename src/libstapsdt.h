@@ -23,6 +23,11 @@ typedef enum {
   int64 = -8,
 } ArgType_t;
 
+typedef enum {
+  memfd_disabled = 0,
+  memfd_enabled = 1,
+} MemFDOption_t;
+
 struct SDTProvider;
 
 typedef struct SDTProbe {
@@ -47,9 +52,19 @@ typedef struct SDTProvider {
   // private
   void *_handle;
   char *_filename;
+  int _memfd;
+  MemFDOption_t _use_memfd;
 } SDTProvider_t;
 
 SDTProvider_t *providerInit(const char *name);
+
+/*
+Linux newer than 3.17 with libc that supports the syscall it will default to
+using a memory-backed file descriptor. This behavior can be overridden at
+runtime by calling this with use_memfd = memfd_disabled prior after providerInit, and before
+providerLoad.
+*/
+int providerUseMemfd(SDTProvider_t *provider, const MemFDOption_t use_memfd);
 
 SDTProbe_t *providerAddProbe(SDTProvider_t *provider, const char *name, int argCount, ...);
 

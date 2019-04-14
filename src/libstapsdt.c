@@ -1,13 +1,14 @@
-#include <stdarg.h>
 #include <dlfcn.h>
 #include <err.h>
-#include <fcntl.h>
 #include <libelf.h>
+#include <limits.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <linux/version.h>
 
 #include "dynamic-symbols.h"
 #include "sdtnote.h"
@@ -17,6 +18,21 @@
 #include "util.h"
 #include "libstapsdt.h"
 #include "errors.h"
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
+#include <linux/memfd.h>
+#include <linux/fcntl.h>
+#include <sys/mman.h>
+#include <sys/syscall.h>
+
+#ifdef __NR_memfd_create // older glibc may not have this syscall defined
+#define HAVE_LIBSTAPSDT_MEMORY_BACKED_FD
+// Note that linux must be 3.17 or greater to support this
+static inline int memfd_create(const char *name, unsigned int flags) {
+  return syscall(__NR_memfd_create, name, flags);
+}
+#endif // #ifdef __NR_memfd_create
+#endif // if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
 
 int createSharedLibrary(int fd, SDTProvider_t *provider) {
   DynElf *dynElf = dynElfInit(fd);
@@ -43,10 +59,28 @@ SDTProvider_t *providerInit(const char *name) {
   provider->_handle   = NULL;
   provider->_filename = NULL;
 
+  provider->_memfd = -1;
+#ifdef HAVE_LIBSTAPSDT_MEMORY_BACKED_FD
+  provider->_use_memfd = memfd_enabled;
+#else
+  provider->_use_memfd = memfd_disabled;
+#endif
+
   provider->name = (char *) calloc(sizeof(char), strlen(name) + 1);
   memcpy(provider->name, name, sizeof(char) * strlen(name) + 1);
 
   return provider;
+}
+
+int providerUseMemfd(SDTProvider_t *provider, const MemFDOption_t use_memfd) {
+#ifdef HAVE_LIBSTAPSDT_MEMORY_BACKED_FD
+  // Changing use of memfd must be done while provider is not loaded.
+  if(provider && !provider->_handle) {
+    provider->_use_memfd = use_memfd;
+    return 1;
+  }
+#endif
+  return 0;
 }
 
 SDTProbe_t *providerAddProbe(SDTProvider_t *provider, const char *name, int argCount, ...) {
@@ -80,30 +114,63 @@ SDTProbe_t *providerAddProbe(SDTProvider_t *provider, const char *name, int argC
   return &(probeList->probe);
 }
 
+static char *tempElfPath(int *fd, const char *name, const int use_memfd) {
+  char *filename = NULL;
+#ifdef HAVE_LIBSTAPSDT_MEMORY_BACKED_FD
+  if(use_memfd == memfd_enabled) {
+    char path_buffer[PATH_MAX];
+    snprintf(path_buffer, sizeof(path_buffer), "libstapsdt:%s", name);
+
+    *fd = memfd_create(path_buffer, F_SEAL_SEAL);
+    if (*fd < 0) {
+      return NULL;
+    }
+
+    snprintf(path_buffer, sizeof(path_buffer), "/proc/%d/fd/%d", getpid(), *fd);
+    filename = calloc(sizeof(char), strlen(path_buffer) + 1);
+    strncpy(filename, path_buffer, strlen(path_buffer) + 1);
+
+    return filename;
+  }
+#endif
+  filename = calloc(sizeof(char), strlen("/tmp/-XXXXXX.so") + strlen(name) + 1);
+
+  sprintf(filename, "/tmp/%s-XXXXXX.so", name);
+
+  if ((*fd = mkstemps(filename, 3)) < 0) {
+    free(filename);
+    return NULL;
+  }
+  return filename;
+}
+
 int providerLoad(SDTProvider_t *provider) {
   int fd;
   void *fireProbe;
-  char *filename = calloc(sizeof(char), strlen("/tmp/-XXXXXX.so") + strlen(provider->name) + 1);
   char *error;
 
-  sprintf(filename, "/tmp/%s-XXXXXX.so", provider->name);
-
-  if ((fd = mkstemps(filename, 3)) < 0) {
-    sdtSetError(provider, tmpCreationError, filename);
-    free(filename);
+  provider->_filename = tempElfPath(&fd, provider->name, provider->_use_memfd);
+  if(provider->_use_memfd == memfd_enabled) {
+    provider->_memfd = fd;
+  }
+  if (provider->_filename == NULL) {
+    sdtSetError(provider, tmpCreationError);
     return -1;
   }
-  provider->_filename = filename;
 
   if(createSharedLibrary(fd, provider) != 0) {
     (void)close(fd);
     return -1;
   }
-  (void)close(fd);
 
-  provider->_handle = dlopen(filename, RTLD_LAZY);
+  if (provider->_memfd == -1) {
+    (void)close(fd);
+  }
+
+  provider->_handle = dlopen(provider->_filename, RTLD_LAZY);
   if (!provider->_handle) {
-    sdtSetError(provider, sharedLibraryOpenError, filename, dlerror());
+    sdtSetError(provider, sharedLibraryOpenError, provider->_filename,
+                dlerror());
     return -1;
   }
 
@@ -112,7 +179,8 @@ int providerLoad(SDTProvider_t *provider) {
 
     // TODO (mmarchini) handle errors better when a symbol fails to load
     if ((error = dlerror()) != NULL) {
-      sdtSetError(provider, sharedLibraryOpenError, filename, node->probe.name, error);
+      sdtSetError(provider, sharedLibraryOpenError, provider->_filename,
+                  node->probe.name, error);
       return -1;
     }
 
@@ -137,7 +205,12 @@ int providerUnload(SDTProvider_t *provider) {
     node->probe._fire = NULL;
   }
 
-  unlink(provider->_filename);
+  if (provider->_memfd > 0) {
+    (void)close(provider->_memfd);
+    provider->_memfd = -1;
+  } else {
+    unlink(provider->_filename);
+  }
   free(provider->_filename);
 
   return 0;

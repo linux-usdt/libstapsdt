@@ -8,7 +8,7 @@
 
 const char *sdtErrors[] = {
   "failed to create Elf shared library for provider '%s'",
-  "failed to create temporary file '%s'",
+  "failed to create temporary file",
   "failed to open shared library '%s': %s",
   "failed to load symbol '%s' for shared library '%s': %s",
   "failed to close shared library '%s' for provider '%s': %s",
