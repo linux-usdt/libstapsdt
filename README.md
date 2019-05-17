@@ -55,6 +55,12 @@ keep working as expected.
 sudo apt install libelf1 libelf-dev
 ```
 
+### Fedora 29
+
+```bash
+sudo dnf install elfutils-libelf-devel
+```
+
 ## Install
 
 To build and install libstapsdt, just run:
