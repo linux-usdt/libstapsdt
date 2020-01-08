@@ -46,7 +46,7 @@ The following example goes through all steps of ``libstapsdt``'s flow:
     while(i) {
       printf("Firing probe...\n");
       if(probeIsEnabled(probe)) {
-        probeFire(probes[idx], i++, j--);
+        probeFire(probe, "I'm a runner!");
         printf("Probe fired!\n");
         i = 0;
       }
