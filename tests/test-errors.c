@@ -2,6 +2,13 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <dlfcn.h>
+#include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
+#include <sys/syscall.h>
+#ifdef __NR_memfd_create // older glibc may not have this syscall defined
+#define HAVE_LIBSTAPSDT_MEMORY_BACKED_FD
+#endif
+#endif
 
 int testElfCreationError() {
   // TODO (mmarchini) write test case for elf creation error
@@ -11,7 +18,18 @@ int testElfCreationError() {
 int testTmpCreationError() {
   SDTProvider_t *provider;
   SDTError_t errno;
+#ifdef HAVE_LIBSTAPSDT_MEMORY_BACKED_FD
+  char *providerLongName = "test/probe/creation/error/with/a/name/longer/than/"
+                           "249/characters"
+                           "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                           "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                           "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                           "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+  provider = providerInit(providerLongName);
+#else
   provider = providerInit("test/probe/creation/error");
+#endif
   if(providerLoad(provider) == 0) {
     return 0;
   }

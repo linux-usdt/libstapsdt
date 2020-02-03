@@ -9,6 +9,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <linux/version.h>
 
 #include "dynamic-symbols.h"
 #include "sdtnote.h"
@@ -19,18 +20,20 @@
 #include "libstapsdt.h"
 #include "errors.h"
 
-#ifdef LIBSTAPSDT_MEMORY_BACKED_FD
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
 #include <linux/memfd.h>
 #include <sys/mman.h>
 #include <sys/syscall.h>
 
+#ifdef __NR_memfd_create // older glibc may not have this syscall defined
+#define HAVE_LIBSTAPSDT_MEMORY_BACKED_FD
 #define F_SEAL_SEAL 0x0001 /* prevent further seals from being set */
-
 // Note that linux must be 3.17 or greater to support this
 static inline int memfd_create(const char *name, unsigned int flags) {
   return syscall(__NR_memfd_create, name, flags);
 }
-#endif
+#endif // #ifdef __NR_memfd_create
+#endif // if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
 
 int createSharedLibrary(int fd, SDTProvider_t *provider) {
   DynElf *dynElf = dynElfInit(fd);
@@ -56,12 +59,29 @@ SDTProvider_t *providerInit(const char *name) {
   provider->probes    = NULL;
   provider->_handle   = NULL;
   provider->_filename = NULL;
+
   provider->_memfd = -1;
+#ifdef HAVE_LIBSTAPSDT_MEMORY_BACKED_FD
+  provider->_use_memfd = 1;
+#else
+  provider->_use_memfd = 0;
+#endif
 
   provider->name = (char *) calloc(sizeof(char), strlen(name) + 1);
   memcpy(provider->name, name, sizeof(char) * strlen(name) + 1);
 
   return provider;
+}
+
+int providerUseMemfd(SDTProvider_t *provider, const int use_memfd) {
+#ifdef HAVE_LIBSTAPSDT_MEMORY_BACKED_FD
+  // Changing use of memfd must be done while provider is not loaded.
+  if(provider && !provider->_handle) {
+    provider->_use_memfd = use_memfd;
+    return 1;
+  }
+#endif
+  return 0;
 }
 
 SDTProbe_t *providerAddProbe(SDTProvider_t *provider, const char *name, int argCount, ...) {
@@ -95,21 +115,25 @@ SDTProbe_t *providerAddProbe(SDTProvider_t *provider, const char *name, int argC
   return &(probeList->probe);
 }
 
-static char *tempElfPath(int *fd, const char *name) {
+static char *tempElfPath(int *fd, const char *name, const int use_memfd) {
   char *filename = NULL;
+#ifdef HAVE_LIBSTAPSDT_MEMORY_BACKED_FD
+  if(use_memfd) {
+    char path_buffer[PATH_MAX];
+    snprintf(path_buffer, sizeof(path_buffer), "libstapsdt:%s", name);
 
-#ifdef LIBSTAPSDT_MEMORY_BACKED_FD
-  char path_buffer[PATH_MAX + 1];
-  snprintf(path_buffer, (PATH_MAX + 1), "libstapsdt:%s", name);
+    *fd = memfd_create(path_buffer, F_SEAL_SEAL);
+    if (*fd < 0) {
+      return NULL;
+    }
 
-  *fd = memfd_create(path_buffer, F_SEAL_SEAL);
-  if (*fd < 0)
-    return NULL;
-  snprintf(path_buffer, (PATH_MAX + 1), "/proc/%d/fd/%d", getpid(), *fd);
+    snprintf(path_buffer, sizeof(path_buffer), "/proc/%d/fd/%d", getpid(), *fd);
+    filename = calloc(sizeof(char), strlen(path_buffer) + 1);
+    strncpy(filename, path_buffer, strlen(path_buffer) + 1);
 
-  filename = calloc(sizeof(char), (strlen(path_buffer) + 1));
-  strcpy(filename, path_buffer);
-#else
+    return filename;
+  }
+#endif
   filename = calloc(sizeof(char), strlen("/tmp/-XXXXXX.so") + strlen(name) + 1);
 
   sprintf(filename, "/tmp/%s-XXXXXX.so", name);
@@ -118,7 +142,6 @@ static char *tempElfPath(int *fd, const char *name) {
     free(filename);
     return NULL;
   }
-#endif
   return filename;
 }
 
@@ -127,10 +150,10 @@ int providerLoad(SDTProvider_t *provider) {
   void *fireProbe;
   char *error;
 
-  provider->_filename = tempElfPath(&fd, provider->name);
-#ifdef LIBSTAPSDT_MEMORY_BACKED_FD
-  provider->_memfd = fd;
-#endif
+  provider->_filename = tempElfPath(&fd, provider->name, provider->_use_memfd);
+  if(provider->_use_memfd) {
+    provider->_memfd = fd;
+  }
   if (provider->_filename == NULL) {
     sdtSetError(provider, tmpCreationError);
     return -1;
@@ -141,8 +164,9 @@ int providerLoad(SDTProvider_t *provider) {
     return -1;
   }
 
-  if (provider->_memfd == -1)
+  if (provider->_memfd == -1) {
     (void)close(fd);
+  }
 
   provider->_handle = dlopen(provider->_filename, RTLD_LAZY);
   if (!provider->_handle) {

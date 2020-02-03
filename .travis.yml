@@ -1,8 +1,14 @@
 language: c
 
 compiler: gcc
-dist: trusty
 sudo: required
+
+jobs:
+  include:
+    - os: linux
+      dist: trusty
+    - os: linux
+      dist: bionic
 
 before_install:
   - sudo apt-get -qq update
