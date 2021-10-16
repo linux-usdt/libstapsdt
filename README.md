@@ -110,6 +110,7 @@ Here is a list of wrappers for other languages:
   * [Python](https://pypi.org/project/stapsdt/)
   * [NodeJS](https://www.npmjs.com/package/usdt)
   * [Go](https://github.com/mmcshane/salp)
+  * [LuaJIT](git.sr.ht/~sm2n/luajit-stapsdt)
 
 ## Write your own wrapper
 
