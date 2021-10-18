@@ -62,9 +62,9 @@ SDTProvider_t *providerInit(const char *name) {
 
   provider->_memfd = -1;
 #ifdef HAVE_LIBSTAPSDT_MEMORY_BACKED_FD
-  provider->_use_memfd = 1;
+  provider->_use_memfd = memfd_enabled;
 #else
-  provider->_use_memfd = 0;
+  provider->_use_memfd = memfd_disabled;
 #endif
 
   provider->name = (char *) calloc(sizeof(char), strlen(name) + 1);
@@ -73,7 +73,7 @@ SDTProvider_t *providerInit(const char *name) {
   return provider;
 }
 
-int providerUseMemfd(SDTProvider_t *provider, const int use_memfd) {
+int providerUseMemfd(SDTProvider_t *provider, const MemFD_Option_t use_memfd) {
 #ifdef HAVE_LIBSTAPSDT_MEMORY_BACKED_FD
   // Changing use of memfd must be done while provider is not loaded.
   if(provider && !provider->_handle) {
@@ -118,7 +118,7 @@ SDTProbe_t *providerAddProbe(SDTProvider_t *provider, const char *name, int argC
 static char *tempElfPath(int *fd, const char *name, const int use_memfd) {
   char *filename = NULL;
 #ifdef HAVE_LIBSTAPSDT_MEMORY_BACKED_FD
-  if(use_memfd) {
+  if(use_memfd == memfd_enabled) {
     char path_buffer[PATH_MAX];
     snprintf(path_buffer, sizeof(path_buffer), "libstapsdt:%s", name);
 
@@ -151,7 +151,7 @@ int providerLoad(SDTProvider_t *provider) {
   char *error;
 
   provider->_filename = tempElfPath(&fd, provider->name, provider->_use_memfd);
-  if(provider->_use_memfd) {
+  if(provider->_use_memfd == memfd_enabled) {
     provider->_memfd = fd;
   }
   if (provider->_filename == NULL) {
