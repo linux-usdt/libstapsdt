@@ -22,12 +22,12 @@
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
 #include <linux/memfd.h>
+#include <linux/fcntl.h>
 #include <sys/mman.h>
 #include <sys/syscall.h>
 
 #ifdef __NR_memfd_create // older glibc may not have this syscall defined
 #define HAVE_LIBSTAPSDT_MEMORY_BACKED_FD
-#define F_SEAL_SEAL 0x0001 /* prevent further seals from being set */
 // Note that linux must be 3.17 or greater to support this
 static inline int memfd_create(const char *name, unsigned int flags) {
   return syscall(__NR_memfd_create, name, flags);
