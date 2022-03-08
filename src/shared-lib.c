@@ -42,7 +42,13 @@ Elf64_Ehdr *createElfHeader(Elf *elf) {
 
   ehdr->e_ident[EI_DATA] = ELFDATA2LSB;
   ehdr->e_type = ET_DYN;
+#if defined(__x86_64__) || defined(_M_X64)
   ehdr->e_machine = EM_X86_64;
+#elif defined(__aarch64__) || defined(_M_ARM64)
+  ehdr->e_machine = EM_AARCH64;
+#else
+#error Unsupported architecture
+#endif
   ehdr->e_version = EV_CURRENT;
   ehdr->e_flags = 0;
 

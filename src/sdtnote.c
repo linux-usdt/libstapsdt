@@ -6,30 +6,63 @@
 #include "util.h"
 
 
-// TODO (mmarchini) add other architectures (this only works for x86_64)
+// TODO (mmarchini) add other architectures (this only works for x86_64 and ARM64)
 char *regMap(int idx) {
+#if defined(__x86_64__) || defined(_M_X64)
     switch (idx) {
       case 0:
-      return "rdi";
+      return "%rdi";
         break;
       case 1:
-        return "rsi";
+        return "%rsi";
         break;
       case 2:
-        return "rdx";
+        return "%rdx";
         break;
       case 3:
-        return "rcx";
+        return "%rcx";
         break;
       case 4:
-        return "r8";
+        return "%r8";
         break;
       case 5:
-        return "r9";
+        return "%r9";
         break;
       default:
         return NULL;
     }
+#elif defined(__aarch64__) || defined(_M_ARM64)
+    switch (idx) {
+      case 0:
+      return "x0";
+        break;
+      case 1:
+        return "x1";
+        break;
+      case 2:
+        return "x2";
+        break;
+      case 3:
+        return "x3";
+        break;
+      case 4:
+        return "x4";
+        break;
+      case 5:
+        return "x5";
+        break;
+      case 6:
+        return "x6";
+        break;
+      case 7:
+        return "x7";
+        break;
+      default:
+        return NULL;
+    }
+#else
+#error Unsupported architecture
+#endif
 }
 
 size_t sdtNoteSize(SDTNote *sdt) {
@@ -73,7 +106,7 @@ SDTNote *sdtNoteInit(SDTProbe_t *probe) {
   sdt->content.argFmt = calloc(sizeof(char), 1);
   sdt->content.argFmt[0] = '\0';
   for(int i=0; i < probe->argCount; i++) {
-    sprintf(buf, "%d@%%%s", probe->argFmt[i], regMap(i));
+    sprintf(buf, "%d@%s", probe->argFmt[i], regMap(i));
 
 
     if(i==0) {
