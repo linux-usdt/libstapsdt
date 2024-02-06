@@ -94,6 +94,24 @@ Here's an example using [eBPF/bcc](https://github.com/iovisor/bcc) trace tool
 sudo /usr/share/bcc/tools/trace -p $(pgrep demo) 'u::PROBE_NAME'
 ```
 
+Other tracing tools that do not support tracing of the libstapsdt-created
+libraries can trace the USDT stapsdt/probe. It will fire when a
+libstapsdt probe fires.  It is passed the provider and probe names
+along with arguments.  For example, the following BPF C program could
+be used to show probe firing:
+
+```
+SEC("usdt//usr/lib/libstapsdt.so:stapsdt:probe")
+int BPF_USDT(args, const char *provider, const char *probename)
+{
+  __bpf_printk("%s/%s fired\n", provider, probename);
+  return 0;
+}
+```
+
+One benefit of this form of tracing is that by tracing libstapsdt.so
+itself, we can trace libstapsdt probe firings system-wide.
+
 ## Run tests
 
 To run tests, just run the command below. Please be aware that there are only
