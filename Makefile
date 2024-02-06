@@ -19,6 +19,7 @@ install:
 	mkdir -p $(DESTDIR)$(PREFIX)/include
 	cp out/$(SONAME) $(DESTDIR)$(PREFIX)/lib/$(SONAME)
 	cp src/libstapsdt.h $(DESTDIR)$(PREFIX)/include/
+	rm -f $(DESTDIR)$(PREFIX)/lib/$(SOLINK)
 	ln -s $(DESTDIR)$(PREFIX)/lib/$(SONAME) $(DESTDIR)$(PREFIX)/lib/$(SOLINK)
 
 uninstall:

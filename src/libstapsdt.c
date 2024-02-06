@@ -17,6 +17,7 @@
 #include "shared-lib.h"
 #include "util.h"
 #include "libstapsdt.h"
+#include "stapsdt-probe.h"
 #include "errors.h"
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
@@ -227,6 +228,12 @@ void probeFire(SDTProbe_t *probe, ...) {
     arg[i] = va_arg(vl, uint64_t);
   }
 
+  /* fire static probe for libstapsdt signifying a dynamic probe has
+   * fired; tracers can attach to libstapsdt to see all dynamic probe
+   * firings system-wide.
+   */
+  stapsdtProbeFire(probe, arg);
+
   switch(probe->argCount) {
     case 0:
       ((void (*)())probe->_fire) ();
@@ -259,6 +266,11 @@ int probeIsEnabled(SDTProbe_t *probe) {
   if(probe->_fire == NULL) {
     return 0;
   }
+  /* tracers can attach to stapsdt/probe to see probe firings across
+   * libstapsdt.
+   */
+  if (stapsdtProbeIsEnabled(probe))
+    return 1;
   if(((*(char *)probe->_fire) & 0x90) == 0x90) {
     return 0;
   }
